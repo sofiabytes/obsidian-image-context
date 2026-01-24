@@ -21,7 +21,7 @@ export default class MyPlugin extends Plugin {
 			id: 'open-file-import-modal',
 			name: 'Add image with metadata',
 			callback: () => {
-				new FileImportModal(this.app).open();
+				new FileImportModal(this.app, this).open();
 			}
 		});
 

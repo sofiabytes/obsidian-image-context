@@ -9,13 +9,10 @@ export class FileImportModal extends Modal {
 		this.plugin = plugin;
 		this.selectedFile = null;
 		this.tags = "";
+		this.selectedFolder = this.plugin.settings.defaultFolder;
 	}
 
 	async onOpen() {
-		console.log('logging');
-		console.log(this);
-		console.log(this.plugin);
-		//const selectedFolder: string = this.plugin.settings.defaultFolder;
 		const { contentEl } = this;
 		contentEl.empty();
 
@@ -64,7 +61,7 @@ export class FileImportModal extends Modal {
 			folderDropdown.addOption(folderPath, folderPath);
 		}
 
-		folderDropdown.setValue("Attachments"); // Default value
+		folderDropdown.setValue(this.selectedFolder); // Default value
 		folderDropdown.onChange(value => {
 			this.selectedFolder = value;
 		});
