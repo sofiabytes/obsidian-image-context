@@ -1,12 +1,15 @@
 import { App, Modal, ButtonComponent, TFolder, TextComponent, DropdownComponent, Notice, normalizePath } from "obsidian";
+import type MyPlugin from "./main";
 
 export class FileImportModal extends Modal {
-	selectedFile: File | null = null;
-	selectedFolder: string = "Attachments";
-	tags: string = "";
+	plugin: MyPlugin;
 
-	constructor(app: App) {
-		super(app);
+	constructor(app: App, plugin: MyPlugin) {
+		super(app, plugin);
+		this.plugin = plugin;
+		this.selectedFile = null;
+		this.tags = "";
+		this.selectedFolder = this.plugin.settings.defaultFolder;
 	}
 
 	async onOpen() {
@@ -24,10 +27,17 @@ export class FileImportModal extends Modal {
 			},
 		});
 
+		// Display element
+		const fileNameEl = contentEl.createEl("div", {
+			text: "No file selected",
+			cls: "selected-file-name",
+		});
+
 		fileInput.onchange = () => {
 			if (fileInput.files && fileInput.files.length > 0) {
 				this.selectedFile = fileInput.files[0];
 				new Notice(`Selected file: ${this.selectedFile.name}`);
+				fileNameEl.setText(this.selectedFile.name);
 			}
 		};
 
@@ -36,6 +46,7 @@ export class FileImportModal extends Modal {
 			.onClick(() => fileInput.click());
 
 		contentEl.appendChild(fileInput);
+		contentEl.appendChild(fileNameEl);
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
@@ -50,7 +61,7 @@ export class FileImportModal extends Modal {
 			folderDropdown.addOption(folderPath, folderPath);
 		}
 
-		folderDropdown.setValue("Attachments"); // Default value
+		folderDropdown.setValue(this.selectedFolder); // Default value
 		folderDropdown.onChange(value => {
 			this.selectedFolder = value;
 		});
@@ -167,7 +178,6 @@ export class FileImportModal extends Modal {
 			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
 			`resource: ${imagePath}`,
 			"---",
-			"",
 		];
 	
 		// Embed syntax (use ![[...]] for image, normal link for PDFs)
