@@ -3,9 +3,12 @@ import type MyPlugin from "./main";
 
 export class FileImportModal extends Modal {
 	plugin: MyPlugin;
+	selectedFile: File | null;
+	tags: string;
+	selectedFolder: string;
 
 	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
+		super(app);
 		this.plugin = plugin;
 		this.selectedFile = null;
 		this.tags = "";
@@ -92,7 +95,7 @@ export class FileImportModal extends Modal {
 				}
 
 				const savedPath = await this.saveFileToVault(this.app, this.selectedFile, this.selectedFolder);
-				const tagArray = this.tags.split(",").map(t => t.trim()).filter(Boolean);
+				const tagArray = this.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
 				const mdPath = await this.createMarkdownWithMetadata(
 					this.app,
 					savedPath,
@@ -105,9 +108,10 @@ export class FileImportModal extends Modal {
 					file: this.selectedFile,
 					folder: this.selectedFolder,
 					tags: this.tags,
+					mdPath: mdPath
 				});
 
-				new Notice("File saved to ${savedPath}");
+				new Notice(`File saved to ${savedPath}`);
 				this.close();
 			});
 	}
@@ -139,7 +143,6 @@ export class FileImportModal extends Modal {
 		destFolder: string
 	): Promise<string> {
 		const arrayBuffer = await file.arrayBuffer();
-		const basePath = app.vault.adapter.getBasePath();
 		const folderPath = normalizePath(destFolder);
 	
 		// Ensure folder exists
