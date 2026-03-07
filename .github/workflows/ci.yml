@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Check version bump
+      if: github.event_name == 'pull_request'
+      run: |
+        git fetch origin master
+        NEW_VERSION=$(jq -r .version manifest.json)
+        OLD_VERSION=$(git show origin/master:manifest.json | jq -r .version)
+        echo "Old version: $OLD_VERSION"
+        echo "New version: $NEW_VERSION"
+        if [ "$NEW_VERSION" = "$OLD_VERSION" ]; then
+          echo "FAIL: You must bump the version in manifest.json before merging to master."
+          exit 1
+        fi
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install --legacy-peer-deps
+
+    - name: Check types
+      run: npm run build
