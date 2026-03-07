@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -18,13 +18,13 @@ jobs:
     - name: Check version bump
       if: github.event_name == 'pull_request'
       run: |
-        git fetch origin master
+        git fetch origin main
         NEW_VERSION=$(jq -r .version manifest.json)
-        OLD_VERSION=$(git show origin/master:manifest.json | jq -r .version)
+        OLD_VERSION=$(git show origin/main:manifest.json | jq -r .version)
         echo "Old version: $OLD_VERSION"
         echo "New version: $NEW_VERSION"
         if [ "$NEW_VERSION" = "$OLD_VERSION" ]; then
-          echo "FAIL: You must bump the version in manifest.json before merging to master."
+          echo "FAIL: You must bump the version in manifest.json before merging to main."
           exit 1
         fi
 
