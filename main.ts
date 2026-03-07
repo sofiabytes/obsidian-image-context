@@ -65,7 +65,7 @@ class SampleSettingTab extends PluginSettingTab {
 				.setPlaceholder('/')
 				.setValue(this.plugin.settings.defaultFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
+					this.plugin.settings.defaultFolder = value;
 					await this.plugin.saveSettings();
 				}));
 	}
