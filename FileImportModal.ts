@@ -12,7 +12,7 @@ export class FileImportModal extends Modal {
 		this.plugin = plugin;
 		this.selectedFile = null;
 		this.tags = "";
-		this.selectedFolder = this.plugin.settings.defaultFolder;
+		this.selectedFolder = this.plugin.settings.defaultFolder || "";
 	}
 
 	async onOpen() {
@@ -61,10 +61,15 @@ export class FileImportModal extends Modal {
 		const folders = this.getAllFolders();
 
 		for (const folderPath of folders) {
-			folderDropdown.addOption(folderPath, folderPath);
+			folderDropdown.addOption(folderPath, folderPath === "" ? "/ (Root)" : folderPath);
 		}
 
-		folderDropdown.setValue(this.selectedFolder); // Default value
+		if (folders.includes(this.selectedFolder)) {
+			folderDropdown.setValue(this.selectedFolder);
+		} else {
+			folderDropdown.setValue("");
+		}
+
 		folderDropdown.onChange(value => {
 			this.selectedFolder = value;
 		});

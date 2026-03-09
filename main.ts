@@ -8,7 +8,7 @@ interface MyPluginSettings {
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	defaultFolder: '/'
+	defaultFolder: ''
 }
 
 export default class MyPlugin extends Plugin {
@@ -65,7 +65,7 @@ class SampleSettingTab extends PluginSettingTab {
 				.setPlaceholder('/')
 				.setValue(this.plugin.settings.defaultFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.defaultFolder = value;
+					this.plugin.settings.defaultFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
 					await this.plugin.saveSettings();
 				}));
 	}
