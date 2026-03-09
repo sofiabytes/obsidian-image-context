@@ -58,6 +58,16 @@ export class FileImportModal extends Modal {
 
 		// === Folders ===
 		const folders = this.getAllFolders();
+		
+		// Add configured folders to the list if they don't exist yet
+		if (this.imageDestFolder !== "" && !folders.includes(this.imageDestFolder)) {
+			folders.push(this.imageDestFolder);
+		}
+		if (this.noteDestFolder !== "" && !folders.includes(this.noteDestFolder)) {
+			folders.push(this.noteDestFolder);
+		}
+		// Sort folders alphabetically
+		folders.sort();
 
 		// Image Folder Dropdown
 		contentEl.createEl("label", { text: "Save image in:" });
