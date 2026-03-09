@@ -4,11 +4,13 @@ import { FileImportModal } from "./FileImportModal"
 // Remember to rename these classes and interfaces!
 
 interface MyPluginSettings {
-	defaultFolder: string;
+	imageFolder: string;
+	noteFolder: string;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
-	defaultFolder: '/'
+	imageFolder: '',
+	noteFolder: ''
 }
 
 export default class MyPlugin extends Plugin {
@@ -59,13 +61,24 @@ class SampleSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Default Folder')
-			.setDesc('Where images and metadata notes are saved')
+			.setName('Image Folder')
+			.setDesc('Where images and PDFs are saved')
 			.addText(text => text
-				.setPlaceholder('/')
-				.setValue(this.plugin.settings.defaultFolder)
+				.setPlaceholder('folder/path')
+				.setValue(this.plugin.settings.imageFolder)
 				.onChange(async (value) => {
-					this.plugin.settings.defaultFolder = value;
+					this.plugin.settings.imageFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Metadata Note Folder')
+			.setDesc('Where the metadata markdown notes are saved')
+			.addText(text => text
+				.setPlaceholder('folder/path')
+				.setValue(this.plugin.settings.noteFolder)
+				.onChange(async (value) => {
+					this.plugin.settings.noteFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
 					await this.plugin.saveSettings();
 				}));
 	}

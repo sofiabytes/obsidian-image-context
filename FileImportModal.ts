@@ -5,14 +5,16 @@ export class FileImportModal extends Modal {
 	plugin: MyPlugin;
 	selectedFile: File | null;
 	tags: string;
-	selectedFolder: string;
+	imageDestFolder: string;
+	noteDestFolder: string;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app);
 		this.plugin = plugin;
 		this.selectedFile = null;
 		this.tags = "";
-		this.selectedFolder = this.plugin.settings.defaultFolder;
+		this.imageDestFolder = this.plugin.settings.imageFolder || "";
+		this.noteDestFolder = this.plugin.settings.noteFolder || "";
 	}
 
 	async onOpen() {
@@ -54,19 +56,50 @@ export class FileImportModal extends Modal {
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// === Folder Dropdown ===
-		contentEl.createEl("label", { text: "Save in folder:" });
-
-		const folderDropdown = new DropdownComponent(contentEl);
+		// === Folders ===
 		const folders = this.getAllFolders();
-
-		for (const folderPath of folders) {
-			folderDropdown.addOption(folderPath, folderPath);
+		
+		// Add configured folders to the list if they don't exist yet
+		if (this.imageDestFolder !== "" && !folders.includes(this.imageDestFolder)) {
+			folders.push(this.imageDestFolder);
 		}
+		if (this.noteDestFolder !== "" && !folders.includes(this.noteDestFolder)) {
+			folders.push(this.noteDestFolder);
+		}
+		// Sort folders alphabetically
+		folders.sort();
 
-		folderDropdown.setValue(this.selectedFolder); // Default value
-		folderDropdown.onChange(value => {
-			this.selectedFolder = value;
+		// Image Folder Dropdown
+		contentEl.createEl("label", { text: "Save image in:" });
+		const imageFolderDropdown = new DropdownComponent(contentEl);
+		for (const folderPath of folders) {
+			imageFolderDropdown.addOption(folderPath, folderPath === "" ? "/ (Root)" : folderPath);
+		}
+		if (folders.includes(this.imageDestFolder)) {
+			imageFolderDropdown.setValue(this.imageDestFolder);
+		} else {
+			imageFolderDropdown.setValue("");
+		}
+		imageFolderDropdown.onChange(value => {
+			this.imageDestFolder = value;
+		});
+
+		contentEl.createEl("br");
+		contentEl.createEl("br");
+
+		// Note Folder Dropdown
+		contentEl.createEl("label", { text: "Save metadata note in:" });
+		const noteFolderDropdown = new DropdownComponent(contentEl);
+		for (const folderPath of folders) {
+			noteFolderDropdown.addOption(folderPath, folderPath === "" ? "/ (Root)" : folderPath);
+		}
+		if (folders.includes(this.noteDestFolder)) {
+			noteFolderDropdown.setValue(this.noteDestFolder);
+		} else {
+			noteFolderDropdown.setValue("");
+		}
+		noteFolderDropdown.onChange(value => {
+			this.noteDestFolder = value;
 		});
 
 		contentEl.createEl("br");
@@ -94,24 +127,25 @@ export class FileImportModal extends Modal {
 					return;
 				}
 
-				const savedPath = await this.saveFileToVault(this.app, this.selectedFile, this.selectedFolder);
+				const savedPath = await this.saveFileToVault(this.app, this.selectedFile, this.imageDestFolder);
 				const tagArray = this.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
 				const mdPath = await this.createMarkdownWithMetadata(
 					this.app,
 					savedPath,
-					this.selectedFolder,
+					this.noteDestFolder,
 					tagArray
 				);
 				
 				// Placeholder for future logic:
 				console.log({
 					file: this.selectedFile,
-					folder: this.selectedFolder,
+					imageFolder: this.imageDestFolder,
+					noteFolder: this.noteDestFolder,
 					tags: this.tags,
 					mdPath: mdPath
 				});
 
-				new Notice(`File saved to ${savedPath}`);
+				new Notice(`File saved to ${savedPath} and note created at ${mdPath}`);
 				this.close();
 			});
 	}
@@ -146,9 +180,9 @@ export class FileImportModal extends Modal {
 		const folderPath = normalizePath(destFolder);
 	
 		// Ensure folder exists
-		await app.vault.createFolder(folderPath).catch(() => {
-			// If folder exists already, ignore
-		});
+		if (folderPath !== "" && !(await app.vault.adapter.exists(folderPath))) {
+			await app.vault.createFolder(folderPath).catch(() => {});
+		}
 	
 		// Make sure file name is unique
 		let filePath = normalizePath(`${folderPath}/${file.name}`);
@@ -173,13 +207,20 @@ export class FileImportModal extends Modal {
 	): Promise<string> {
 		const fileName = imagePath.split("/").pop()!.split(".")[0];
 		const mdFileName = `${fileName}.md`;
-		const mdFilePath = normalizePath(`${destFolder}/${mdFileName}`);
+		const folderPath = normalizePath(destFolder);
+
+		// Ensure folder exists
+		if (folderPath !== "" && !(await app.vault.adapter.exists(folderPath))) {
+			await app.vault.createFolder(folderPath).catch(() => {});
+		}
+
+		const mdFilePath = normalizePath(`${folderPath}/${mdFileName}`);
 
 		// Prepare frontmatter
 		const frontmatter = [
 			"---",
 			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
-			`resource: ${imagePath}`,
+			`resource: "${imagePath}"`,
 			"---",
 		];
 	
@@ -198,4 +239,3 @@ export class FileImportModal extends Modal {
 
 
 }
-
