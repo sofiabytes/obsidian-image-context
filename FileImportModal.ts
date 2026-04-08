@@ -201,8 +201,9 @@ export class FileImportModal extends Modal {
 		destFolder: string,
 		tags: string[]
 	): Promise<string> {
-		const fileName = imagePath.split("/").pop()!.split(".")[0];
-		const mdFileName = `${fileName}.md`;
+		const fileName = imagePath.split("/").pop()!;
+		const fileNameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
+		const mdFileName = `${fileNameWithoutExtension}.md`;
 		const folderPath = normalizePath(destFolder);
 
 		// Ensure folder exists
@@ -211,12 +212,18 @@ export class FileImportModal extends Modal {
 		}
 
 		const mdFilePath = normalizePath(`${folderPath}/${mdFileName}`);
+		let finalMdFilePath = mdFilePath;
+		let counter = 1;
+		while (await app.vault.adapter.exists(finalMdFilePath)) {
+			finalMdFilePath = normalizePath(`${folderPath}/${fileNameWithoutExtension}-${counter}.md`);
+			counter++;
+		}
 
 		// Prepare frontmatter
 		const frontmatter = [
 			"---",
 			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
-			`resource: "${imagePath}"`,
+			`resource: "[[${imagePath}]]"`,
 			"---",
 		];
 	
@@ -229,8 +236,8 @@ export class FileImportModal extends Modal {
 		const content = frontmatter.join("\n") + "\n" + body;
 	
 		// Save the file
-		await app.vault.create(mdFilePath, content);
-		return mdFilePath;
+		await app.vault.create(finalMdFilePath, content);
+		return finalMdFilePath;
 	}
 
 
