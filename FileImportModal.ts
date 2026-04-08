@@ -1,4 +1,4 @@
-import { App, Modal, ButtonComponent, TFolder, TextComponent, DropdownComponent, Notice, normalizePath } from "obsidian";
+import { App, Modal, ButtonComponent, TFolder, TextComponent, DropdownComponent, Notice, normalizePath, TFile } from "obsidian";
 import type MyPlugin from "./main";
 
 export class FileImportModal extends Modal {
@@ -135,16 +135,12 @@ export class FileImportModal extends Modal {
 					this.noteDestFolder,
 					tagArray
 				);
-				
-				// Placeholder for future logic:
-				console.log({
-					file: this.selectedFile,
-					imageFolder: this.imageDestFolder,
-					noteFolder: this.noteDestFolder,
-					tags: this.tags,
-					mdPath: mdPath
-				});
 
+				const mdFile = this.app.vault.getAbstractFileByPath(mdPath);
+				if (mdFile instanceof TFile) {
+					await this.app.workspace.getLeaf('tab').openFile(mdFile);
+				}
+				
 				new Notice(`File saved to ${savedPath} and note created at ${mdPath}`);
 				this.close();
 			});
