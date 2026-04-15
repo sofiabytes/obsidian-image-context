@@ -1,7 +1,7 @@
 {
 	"id": "image-import-plugin",
 	"name": "Image Import Plugin",
-	"version": "1.2.0",
+	"version": "1.2.1",
 	"minAppVersion": "0.15.0",
 	"description": "Add images with metadata",
 	"author": "Obsidian",

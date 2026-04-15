@@ -5,6 +5,8 @@ export class FileImportModal extends Modal {
 	plugin: MyPlugin;
 	selectedFile: File | null;
 	tags: string;
+	source: string;
+	description: string;
 	imageDestFolder: string;
 	noteDestFolder: string;
 
@@ -13,6 +15,8 @@ export class FileImportModal extends Modal {
 		this.plugin = plugin;
 		this.selectedFile = null;
 		this.tags = "";
+		this.source = "";
+		this.description = "";
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
 	}
@@ -117,6 +121,33 @@ export class FileImportModal extends Modal {
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
+		// === Source Input ===
+		contentEl.createEl("label", { text: "Source (URL or Reference):" });
+		new TextComponent(contentEl)
+			.setPlaceholder("e.g. https://example.com")
+			.onChange(value => {
+				this.source = value;
+			});
+
+		contentEl.createEl("br");
+		contentEl.createEl("br");
+
+		// === Description Input ===
+		contentEl.createEl("label", { text: "Description:" });
+		const descriptionEl = contentEl.createEl("textarea", {
+			attr: {
+				rows: "4",
+				style: "width: 100%;",
+				placeholder: "Enter description here..."
+			}
+		});
+		descriptionEl.oninput = (e) => {
+			this.description = (e.target as HTMLTextAreaElement).value;
+		};
+
+		contentEl.createEl("br");
+		contentEl.createEl("br");
+
 		// === Create File Button ===
 		new ButtonComponent(contentEl)
 			.setButtonText("Create File")
@@ -133,7 +164,9 @@ export class FileImportModal extends Modal {
 					this.app,
 					savedPath,
 					this.noteDestFolder,
-					tagArray
+					tagArray,
+					this.source,
+					this.description
 				);
 
 				const mdFile = this.app.vault.getAbstractFileByPath(mdPath);
@@ -199,7 +232,9 @@ export class FileImportModal extends Modal {
 		app: App,
 		imagePath: string,
 		destFolder: string,
-		tags: string[]
+		tags: string[],
+		source: string,
+		description: string
 	): Promise<string> {
 		const fileName = imagePath.split("/").pop()!;
 		const fileNameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
@@ -220,20 +255,29 @@ export class FileImportModal extends Modal {
 		}
 
 		// Prepare frontmatter
-		const frontmatter = [
+		const frontmatterLines = [
 			"---",
 			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
 			`resource: "[[${imagePath}]]"`,
-			"---",
 		];
+
+		if (source.trim()) {
+			frontmatterLines.push(`source: "${source.replace(/"/g, '\\"')}"`);
+		}
+
+		frontmatterLines.push("---");
 	
 		// Embed syntax (use ![[...]] for image, normal link for PDFs)
 		const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(imagePath);
-		const body = isImage
+		let content = frontmatterLines.join("\n") + "\n\n";
+		
+		content += isImage
 			? `![[${imagePath}]]`
 			: `[Open file](${imagePath})`;
-	
-		const content = frontmatter.join("\n") + "\n" + body;
+		
+		if (description.trim()) {
+			content += "\n\n" + description.trim();
+		}
 	
 		// Save the file
 		await app.vault.create(finalMdFilePath, content);
