@@ -1,5 +1,6 @@
 import { App, Modal, ButtonComponent, TFolder, TextComponent, DropdownComponent, Notice, normalizePath, TFile } from "obsidian";
 import type MyPlugin from "./main";
+import ExifReader from 'exifreader';
 
 export class FileImportModal extends Modal {
 	plugin: MyPlugin;
@@ -9,6 +10,13 @@ export class FileImportModal extends Modal {
 	description: string;
 	imageDestFolder: string;
 	noteDestFolder: string;
+	extractExif: boolean;
+	
+	// EXIF data
+	exifDate: string;
+	exifLocation: string;
+	latitude: string;
+	longitude: string;
 
 	constructor(app: App, plugin: MyPlugin) {
 		super(app);
@@ -19,6 +27,7 @@ export class FileImportModal extends Modal {
 		this.description = "";
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
+		this.extractExif = this.plugin.settings.extractExif || false;
 	}
 
 	async onOpen() {
@@ -47,6 +56,9 @@ export class FileImportModal extends Modal {
 				this.selectedFile = fileInput.files[0];
 				new Notice(`Selected file: ${this.selectedFile.name}`);
 				fileNameEl.setText(this.selectedFile.name);
+				if (this.extractExif && this.selectedFile.type.includes("image")) {
+					this.extractExifData(this.selectedFile);
+				}
 			}
 		};
 
@@ -105,6 +117,39 @@ export class FileImportModal extends Modal {
 		noteFolderDropdown.onChange(value => {
 			this.noteDestFolder = value;
 		});
+
+		contentEl.createEl("br");
+		contentEl.createEl("br");
+
+		// === EXIF Data Display ===
+		if (this.extractExif && this.selectedFile?.type.includes("image")) {
+			contentEl.createEl("h3", { text: "Extracted EXIF Data" });
+			
+			const exifContainer = contentEl.createEl("div", { cls: "exif-container" });
+			
+			if (this.exifDate) {
+				exifContainer.createEl("p", { text: `📅 Date Taken: ${this.exifDate}` });
+			} else {
+				exifContainer.createEl("p", { text: "📅 Date: Not available" });
+			}
+			
+			if (this.latitude && this.longitude) {
+				const latLongText = `📍 Location: ${this.latitude}, ${this.longitude}`;
+				exifContainer.createEl("p", { text: latLongText });
+				
+				const mapsLink = contentEl.createEl("a", {
+					text: "Open in Maps Plugin",
+					cls: "exif-maps-link",
+					href: `obsidian://plugin-exif-location?lat=${this.latitude}&lng=${this.longitude}`
+				});
+				mapsLink.addEventListener('click', (e) => {
+					e.preventDefault();
+					new Notice("Location data saved. Check the Maps plugin for location markers.");
+				});
+			} else {
+				exifContainer.createEl("p", { text: "📍 Location: Not available" });
+			}
+		}
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
@@ -227,6 +272,20 @@ export class FileImportModal extends Modal {
 		return filePath;
 	}
 
+	async extractExifData(file: File): Promise<void> {
+		try {
+			const arrayBuffer = await file.arrayBuffer();
+			const buffer = Buffer.from(arrayBuffer);
+			
+			const tags = ExifReader.load(buffer)
+			console.log(tags)
+		} catch (error) {
+			console.error("Error extracting EXIF data:", error);
+			this.exifDate = "Not available";
+			this.latitude = "";
+			this.longitude = "";
+		}
+	}
 
 	async createMarkdownWithMetadata(
 		app: App,
@@ -254,17 +313,37 @@ export class FileImportModal extends Modal {
 			counter++;
 		}
 
-		// Prepare frontmatter
+		// Prepare frontmatter for Maps plugin compatibility
 		const frontmatterLines = [
 			"---",
-			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
-			`resource: "[[${imagePath}]]"`,
 		];
-
+		
+		// Add tags
+		if (tags.length > 0) {
+			frontmatterLines.push(`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`);
+		}
+		
+		// Add date from EXIF if available
+		if (this.exifDate && this.extractExif) {
+			// Parse date and format for Obsidian
+			const dateObj = new Date(this.exifDate);
+			const formattedDate = dateObj.toISOString();
+			frontmatterLines.push(`created: ${formattedDate}`);
+			frontmatterLines.push(`created-time: ${this.exifDate}`);
+		}
+		
+		// Add location data for Maps plugin (compatible format: lat + lng)
+		if (this.latitude && this.longitude && this.extractExif) {
+			frontmatterLines.push(`latitude: ${this.latitude}`);
+			frontmatterLines.push(`longitude: ${this.longitude}`);
+			frontmatterLines.push(`location: "${this.latitude}, ${this.longitude}"`);
+		}
+		
+		// Add source if provided
 		if (source.trim()) {
 			frontmatterLines.push(`source: "${source.replace(/"/g, '\\"')}"`);
 		}
-
+		
 		frontmatterLines.push("---");
 	
 		// Embed syntax (use ![[...]] for image, normal link for PDFs)
@@ -283,6 +362,4 @@ export class FileImportModal extends Modal {
 		await app.vault.create(finalMdFilePath, content);
 		return finalMdFilePath;
 	}
-
-
 }
