@@ -51,13 +51,13 @@ export class FileImportModal extends Modal {
 			cls: "selected-file-name",
 		});
 
-		fileInput.onchange = () => {
+		fileInput.onchange = async () => {
 			if (fileInput.files && fileInput.files.length > 0) {
 				this.selectedFile = fileInput.files[0];
 				new Notice(`Selected file: ${this.selectedFile.name}`);
 				fileNameEl.setText(this.selectedFile.name);
 				if (this.extractExif && this.selectedFile.type.includes("image")) {
-					this.extractExifData(this.selectedFile);
+					await this.extractExifData(this.selectedFile);
 				}
 			}
 		};
@@ -277,8 +277,40 @@ export class FileImportModal extends Modal {
 			const arrayBuffer = await file.arrayBuffer();
 			const buffer = Buffer.from(arrayBuffer);
 			
-			const tags = ExifReader.load(buffer)
-			console.log(tags)
+			const tags = ExifReader.load(buffer);
+			console.log("EXIF tags:", tags);
+			
+			// Extract date
+			if (tags.DateTaken && tags.DateTaken.Date) {
+				this.exifDate = tags.DateTaken.Date;
+			} else if (tags.DateTimeOriginal && tags.DateTimeOriginal.DateTimeOriginal) {
+				this.exifDate = tags.DateTimeOriginal.DateTimeOriginal;
+			} else if (tags.DateTime && tags.DateTime.DateTime) {
+				this.exifDate = tags.DateTime.DateTime;
+			} else {
+				this.exifDate = "Not available";
+			}
+			
+			// Extract location coordinates
+			if (tags.GPSLatitude && tags.GPSLatitude.value) {
+				const latitude = tags.GPSLatitude.value;
+				const ref = tags.GPSLatitude.ref;
+				const latDir = ref[latitude.length - 1] || 'N';
+				const latVal = parseFloat(latitude.slice(0, latitude.length - 1));
+				this.latitude = `${latDir}${latVal}`;
+			}
+			
+			if (tags.GPSLongitude && tags.GPSLongitude.value) {
+				const longitude = tags.GPSLongitude.value;
+				const ref = tags.GPSLongitude.ref;
+				const lngDir = ref[longitude.length - 1] || 'E';
+				const lngVal = parseFloat(longitude.slice(0, longitude.length - 1));
+				this.longitude = `${lngDir}${lngVal}`;
+			}
+			
+			console.log(`EXIF Date: ${this.exifDate}`);
+			console.log(`EXIF Latitude: ${this.latitude}`);
+			console.log(`EXIF Longitude: ${this.longitude}`);
 		} catch (error) {
 			console.error("Error extracting EXIF data:", error);
 			this.exifDate = "Not available";
