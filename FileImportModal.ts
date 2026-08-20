@@ -10,7 +10,7 @@ import {
 	TFile,
 } from "obsidian";
 import type MyPlugin from "./main";
-import ExifReader from "exifreader";
+import { load } from "exifreader";
 
 export class FileImportModal extends Modal {
 	plugin: MyPlugin;
@@ -385,7 +385,7 @@ export class FileImportModal extends Modal {
 		try {
 			const arrayBuffer = await file.arrayBuffer();
 
-			const tags = ExifReader.load(arrayBuffer);
+			const tags = load(arrayBuffer);
 
 			this.exifData = tags;
 
