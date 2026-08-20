@@ -9,11 +9,11 @@ import {
 	normalizePath,
 	TFile,
 } from "obsidian";
-import type MyPlugin from "./main";
+import type PixNotePlugin from "./main";
 import { load } from "exifreader";
 
 export class FileImportModal extends Modal {
-	plugin: MyPlugin;
+	plugin: PixNotePlugin;
 
 	selectedFile: File | null = null;
 

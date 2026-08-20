@@ -1,22 +1,20 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { FileImportModal } from "./FileImportModal"
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
+interface PixNotePluginSettings {
 	imageFolder: string;
 	noteFolder: string;
 	extractExif: boolean;
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
+const DEFAULT_SETTINGS: PixNotePluginSettings = {
 	imageFolder: '',
 	noteFolder: '',
 	extractExif: true
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+export default class PixNotePlugin extends Plugin {
+	settings: PixNotePluginSettings;
 
 	async onload() {
 		await this.loadSettings();
@@ -30,14 +28,15 @@ export default class MyPlugin extends Plugin {
 		});
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new PixNoteSettingTab(this.app, this));
 
 		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	onunload() {
-
+		// Clear the interval when plugin is disabled
+		window.clearInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
 	async loadSettings() {
@@ -49,10 +48,10 @@ export default class MyPlugin extends Plugin {
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
+class PixNoteSettingTab extends PluginSettingTab {
+	plugin: PixNotePlugin;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: PixNotePlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
