@@ -6,11 +6,13 @@ import { FileImportModal } from "./FileImportModal"
 interface MyPluginSettings {
 	imageFolder: string;
 	noteFolder: string;
+	extractExif: boolean;
 }
 
 const DEFAULT_SETTINGS: MyPluginSettings = {
 	imageFolder: '',
-	noteFolder: ''
+	noteFolder: '',
+	extractExif: true
 }
 
 export default class MyPlugin extends Plugin {
@@ -60,16 +62,16 @@ class SampleSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl)
-			.setName('Image Folder')
-			.setDesc('Where images and PDFs are saved')
-			.addText(text => text
-				.setPlaceholder('folder/path')
-				.setValue(this.plugin.settings.imageFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.imageFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
-					await this.plugin.saveSettings();
-				}));
+	new Setting(containerEl)
+				.setName('Image Folder')
+				.setDesc('Where images and PDFs are saved')
+				.addText(text => text
+					.setPlaceholder('folder/path')
+					.setValue(this.plugin.settings.imageFolder)
+					.onChange(async (value) => {
+						this.plugin.settings.imageFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
+						await this.plugin.saveSettings();
+					}));
 
 		new Setting(containerEl)
 			.setName('Metadata Note Folder')
@@ -79,6 +81,16 @@ class SampleSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.noteFolder)
 				.onChange(async (value) => {
 					this.plugin.settings.noteFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
+					await this.plugin.saveSettings();
+				}));
+		
+		new Setting(containerEl)
+			.setName('Extract EXIF Data')
+			.setDesc('Automatically extract date and location from image metadata')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.extractExif)
+				.onChange(async (value) => {
+					this.plugin.settings.extractExif = value;
 					await this.plugin.saveSettings();
 				}));
 	}

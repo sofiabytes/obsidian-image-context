@@ -1,33 +1,98 @@
-import { App, Modal, ButtonComponent, TFolder, TextComponent, DropdownComponent, Notice, normalizePath, TFile } from "obsidian";
+import {
+	App,
+	Modal,
+	ButtonComponent,
+	TFolder,
+	TextComponent,
+	DropdownComponent,
+	Notice,
+	normalizePath,
+	TFile,
+} from "obsidian";
 import type MyPlugin from "./main";
+import { load } from "exifreader";
 
 export class FileImportModal extends Modal {
 	plugin: MyPlugin;
-	selectedFile: File | null;
-	tags: string;
-	source: string;
-	description: string;
+
+	selectedFile: File | null = null;
+
+	tags = "";
+	source = "";
+	description = "";
+
 	imageDestFolder: string;
 	noteDestFolder: string;
 
+	extractExif: boolean;
+
+	// EXIF data
+	exifData: Record<string, any> | null = null;
+	latitude: number | null = null;
+	longitude: number | null = null;
+	exifDate: string | null = null;
+
 	constructor(app: App, plugin: MyPlugin) {
 		super(app);
+
 		this.plugin = plugin;
-		this.selectedFile = null;
-		this.tags = "";
-		this.source = "";
-		this.description = "";
+
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
+		this.extractExif = this.plugin.settings.extractExif || false;
 	}
 
+	// ------------------------------------------------------------
+	// Modal lifecycle
+	// ------------------------------------------------------------
+
 	async onOpen() {
+		this.createDialogue();
+	}
+
+	onClose() {
+		this.contentEl.empty();
+	}
+
+	// ------------------------------------------------------------
+	// Folder handling
+	// ------------------------------------------------------------
+
+	getAllFolders(): string[] {
+		const folders: string[] = [];
+
+		const walk = (folder: TFolder) => {
+			folders.push(folder.path);
+
+			for (const child of folder.children) {
+				if (child instanceof TFolder) {
+					walk(child);
+				}
+			}
+		};
+
+		walk(this.app.vault.getRoot());
+
+		return folders;
+	}
+
+	// ------------------------------------------------------------
+	// UI
+	// ------------------------------------------------------------
+
+	createDialogue() {
 		const { contentEl } = this;
+
 		contentEl.empty();
 
-		contentEl.createEl("h2", { text: "Add Image or PDF with Metadata" });
+		contentEl.createEl("h2", {
+			text: "Add Image or PDF with Metadata",
+		});
 
-		// === File Picker ===
+		// ============================================================
+		// File picker
+		// ============================================================
+
 		const fileInput = createEl("input", {
 			attr: {
 				type: "file",
@@ -36,7 +101,6 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		// Display element
 		const fileNameEl = contentEl.createEl("div", {
 			text: "No file selected",
 			cls: "selected-file-name",
@@ -45,7 +109,9 @@ export class FileImportModal extends Modal {
 		fileInput.onchange = () => {
 			if (fileInput.files && fileInput.files.length > 0) {
 				this.selectedFile = fileInput.files[0];
+
 				new Notice(`Selected file: ${this.selectedFile.name}`);
+
 				fileNameEl.setText(this.selectedFile.name);
 			}
 		};
@@ -58,89 +124,140 @@ export class FileImportModal extends Modal {
 		contentEl.appendChild(fileNameEl);
 
 		contentEl.createEl("br");
-		contentEl.createEl("br");
 
-		// === Folders ===
+		// ============================================================
+		// Folders
+		// ============================================================
+
 		const folders = this.getAllFolders();
-		
-		// Add configured folders to the list if they don't exist yet
-		if (this.imageDestFolder !== "" && !folders.includes(this.imageDestFolder)) {
+
+		// Add configured folders even if they don't currently exist
+		if (
+			this.imageDestFolder !== "" &&
+			!folders.includes(this.imageDestFolder)
+		) {
 			folders.push(this.imageDestFolder);
 		}
-		if (this.noteDestFolder !== "" && !folders.includes(this.noteDestFolder)) {
+
+		if (
+			this.noteDestFolder !== "" &&
+			!folders.includes(this.noteDestFolder)
+		) {
 			folders.push(this.noteDestFolder);
 		}
-		// Sort folders alphabetically
+
 		folders.sort();
 
-		// Image Folder Dropdown
-		contentEl.createEl("label", { text: "Save image in:" });
+		// ------------------------------------------------------------
+		// Image folder
+		// ------------------------------------------------------------
+
+		contentEl.createEl("label", {
+			text: "Save image in:",
+		});
+
 		const imageFolderDropdown = new DropdownComponent(contentEl);
+
 		for (const folderPath of folders) {
-			imageFolderDropdown.addOption(folderPath, folderPath === "" ? "/ (Root)" : folderPath);
+			imageFolderDropdown.addOption(
+				folderPath,
+				folderPath === "" ? "/ (Root)" : folderPath
+			);
 		}
-		if (folders.includes(this.imageDestFolder)) {
-			imageFolderDropdown.setValue(this.imageDestFolder);
-		} else {
-			imageFolderDropdown.setValue("");
-		}
-		imageFolderDropdown.onChange(value => {
+
+		imageFolderDropdown.setValue(
+			folders.includes(this.imageDestFolder)
+				? this.imageDestFolder
+				: ""
+		);
+
+		imageFolderDropdown.onChange((value) => {
 			this.imageDestFolder = value;
 		});
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// Note Folder Dropdown
-		contentEl.createEl("label", { text: "Save metadata note in:" });
+		// ------------------------------------------------------------
+		// Note folder
+		// ------------------------------------------------------------
+
+		contentEl.createEl("label", {
+			text: "Save metadata note in:",
+		});
+
 		const noteFolderDropdown = new DropdownComponent(contentEl);
+
 		for (const folderPath of folders) {
-			noteFolderDropdown.addOption(folderPath, folderPath === "" ? "/ (Root)" : folderPath);
+			noteFolderDropdown.addOption(
+				folderPath,
+				folderPath === "" ? "/ (Root)" : folderPath
+			);
 		}
-		if (folders.includes(this.noteDestFolder)) {
-			noteFolderDropdown.setValue(this.noteDestFolder);
-		} else {
-			noteFolderDropdown.setValue("");
-		}
-		noteFolderDropdown.onChange(value => {
+
+		noteFolderDropdown.setValue(
+			folders.includes(this.noteDestFolder)
+				? this.noteDestFolder
+				: ""
+		);
+
+		noteFolderDropdown.onChange((value) => {
 			this.noteDestFolder = value;
 		});
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// === Tags Input ===
-		contentEl.createEl("label", { text: "Tags (comma-separated):" });
+		// ============================================================
+		// Tags
+		// ============================================================
+
+		contentEl.createEl("label", {
+			text: "Tags (comma-separated):",
+		});
 
 		new TextComponent(contentEl)
-			.setPlaceholder("e.g. reading,quote")
-			.onChange(value => {
+			.setPlaceholder("e.g. reading, quote")
+			.onChange((value) => {
 				this.tags = value;
 			});
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// === Source Input ===
-		contentEl.createEl("label", { text: "Source (URL or Reference):" });
+		// ============================================================
+		// Source
+		// ============================================================
+
+		contentEl.createEl("label", {
+			text: "Source (URL or Reference):",
+		});
+
 		new TextComponent(contentEl)
 			.setPlaceholder("e.g. https://example.com")
-			.onChange(value => {
+			.onChange((value) => {
 				this.source = value;
 			});
 
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// === Description Input ===
-		contentEl.createEl("label", { text: "Description:" });
+		// ============================================================
+		// Description
+		// ============================================================
+
+		contentEl.createEl("label", {
+			text: "Description:",
+		});
+
 		const descriptionEl = contentEl.createEl("textarea", {
 			attr: {
 				rows: "4",
 				style: "width: 100%;",
-				placeholder: "Enter description here..."
-			}
+				placeholder: "Enter description here...",
+			},
 		});
+
 		descriptionEl.oninput = (e) => {
 			this.description = (e.target as HTMLTextAreaElement).value;
 		};
@@ -148,141 +265,503 @@ export class FileImportModal extends Modal {
 		contentEl.createEl("br");
 		contentEl.createEl("br");
 
-		// === Create File Button ===
+		// ============================================================
+		// EXIF checkbox
+		// ============================================================
+
+		const exifContainer = contentEl.createDiv();
+
+		const exifCheckbox = exifContainer.createEl("input", {
+			attr: {
+				type: "checkbox",
+			},
+		});
+
+		exifCheckbox.checked = this.extractExif;
+
+		const exifLabel = exifContainer.createEl("label", {
+			text: " Extract EXIF metadata",
+		});
+
+		exifLabel.prepend(exifCheckbox);
+
+		exifCheckbox.onchange = () => {
+			this.extractExif = exifCheckbox.checked;
+		};
+
+		contentEl.createEl("br");
+		contentEl.createEl("br");
+
+		// ============================================================
+		// Create file
+		// ============================================================
+
 		new ButtonComponent(contentEl)
 			.setButtonText("Create File")
 			.setCta()
 			.onClick(async () => {
-				if (!this.selectedFile) {
-					new Notice("Please select a file first.");
-					return;
-				}
-
-				const savedPath = await this.saveFileToVault(this.app, this.selectedFile, this.imageDestFolder);
-				const tagArray = this.tags.split(",").map((t: string) => t.trim()).filter(Boolean);
-				const mdPath = await this.createMarkdownWithMetadata(
-					this.app,
-					savedPath,
-					this.noteDestFolder,
-					tagArray,
-					this.source,
-					this.description
-				);
-
-				const mdFile = this.app.vault.getAbstractFileByPath(mdPath);
-				if (mdFile instanceof TFile) {
-					await this.app.workspace.getLeaf('tab').openFile(mdFile);
-				}
-				
-				new Notice(`File saved to ${savedPath} and note created at ${mdPath}`);
-				this.close();
+				await this.importSelectedFile();
 			});
 	}
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
-	}
+	// ------------------------------------------------------------
+	// Main import flow
+	// ------------------------------------------------------------
 
-	getAllFolders(): string[] {
-		const folders: string[] = [];
+	async importSelectedFile() {
+		if (!this.selectedFile) {
+			new Notice("Please select a file first.");
+			return;
+		}
 
-		const walk = (folder: TFolder) => {
-			folders.push(folder.path);
-			for (const child of folder.children) {
-				if (child instanceof TFolder) {
-					walk(child);
-				}
+		try {
+			new Notice("Importing file...");
+
+			// Reset EXIF state from any previous import
+			this.resetExifData();
+
+			// Extract EXIF before saving
+			if (this.extractExif) {
+				await this.extractExifData(this.selectedFile);
 			}
-		};
 
-		walk(this.app.vault.getRoot());
-		return folders;
+			// Save image/PDF
+			const savedImagePath = await this.saveImage(
+				this.selectedFile,
+				this.imageDestFolder
+			);
+
+			// Parse tags
+			const tagArray = this.tags
+				.split(",")
+				.map((tag) => tag.trim())
+				.filter(Boolean);
+
+			// Create metadata note
+			const mdPath = await this.saveMarkdown(
+				savedImagePath,
+				this.noteDestFolder,
+				tagArray
+			);
+
+			// Open the newly-created note
+			const mdFile = this.app.vault.getAbstractFileByPath(mdPath);
+
+			if (mdFile instanceof TFile) {
+				await this.app.workspace.getLeaf("tab").openFile(mdFile);
+			}
+
+			new Notice("File imported successfully.");
+
+			this.close();
+		} catch (error) {
+			console.error("Error importing file:", error);
+
+			new Notice(
+				`Import failed: ${
+					error instanceof Error ? error.message : String(error)
+				}`
+			);
+		}
 	}
 
-	async saveFileToVault(
-		app: App,
+	// ------------------------------------------------------------
+	// EXIF
+	// ------------------------------------------------------------
+
+	resetExifData() {
+		this.exifData = null;
+		this.latitude = null;
+		this.longitude = null;
+		this.exifDate = null;
+	}
+
+	async extractExifData(file: File): Promise<void> {
+		// PDFs don't contain normal image EXIF metadata
+		if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) {
+			return;
+		}
+
+		try {
+			const arrayBuffer = await file.arrayBuffer();
+
+			const tags = load(arrayBuffer);
+
+			this.exifData = tags;
+
+			console.log("EXIF data:", tags);
+
+			// --------------------------------------------------------
+			// GPS
+			// --------------------------------------------------------
+
+			const gpsLatitude = tags["GPSLatitude"];
+			const gpsLongitude = tags["GPSLongitude"];
+
+			if (gpsLatitude && gpsLongitude) {
+				this.latitude = this.getExifNumber(gpsLatitude);
+				this.longitude = this.getExifNumber(gpsLongitude);
+			}
+
+			// --------------------------------------------------------
+			// Date
+			// --------------------------------------------------------
+
+			const dateTag =
+				tags["DateTimeOriginal"] ||
+				tags["DateTimeDigitized"] ||
+				tags["DateTime"];
+
+			if (dateTag) {
+				this.exifDate = this.getExifDescription(dateTag);
+			}
+		} catch (error) {
+			console.error("Error extracting EXIF data:", error);
+
+			// Don't abort the entire import because EXIF failed.
+			new Notice("Could not read EXIF metadata.");
+		}
+	}
+
+	/**
+	 * Extract a numeric value from an ExifReader tag.
+	 */
+	private getExifNumber(tag: any): number | null {
+		if (!tag) {
+			return null;
+		}
+
+		if (typeof tag.value === "number") {
+			return tag.value;
+		}
+
+		if (typeof tag.description === "number") {
+			return tag.description;
+		}
+
+		// Some EXIF values may be arrays.
+		if (Array.isArray(tag.value)) {
+			const values = tag.value
+				.map((value: any) => {
+					if (typeof value === "number") {
+						return value;
+					}
+
+					if (
+						value &&
+						typeof value === "object" &&
+						"numerator" in value &&
+						"denominator" in value
+					) {
+						return value.numerator / value.denominator;
+					}
+
+					return Number(value);
+				})
+				.filter((value: number) => !Number.isNaN(value));
+
+			if (values.length === 1) {
+				return values[0];
+			}
+
+			// GPS coordinates can be represented as degrees/minutes/seconds.
+			if (values.length >= 3) {
+				return (
+					values[0] +
+					values[1] / 60 +
+					values[2] / 3600
+				);
+			}
+		}
+
+		const numericValue = Number(tag.description);
+
+		return Number.isNaN(numericValue) ? null : numericValue;
+	}
+
+	/**
+	 * Get the human-readable EXIF description.
+	 */
+	private getExifDescription(tag: any): string | null {
+		if (!tag) {
+			return null;
+		}
+
+		if (typeof tag.description === "string") {
+			return tag.description;
+		}
+
+		if (typeof tag.value === "string") {
+			return tag.value;
+		}
+
+		return null;
+	}
+
+	// ------------------------------------------------------------
+	// Save image / PDF
+	// ------------------------------------------------------------
+
+	async saveImage(
 		file: File,
 		destFolder: string
 	): Promise<string> {
 		const arrayBuffer = await file.arrayBuffer();
-		const folderPath = normalizePath(destFolder);
-	
-		// Ensure folder exists
-		if (folderPath !== "" && !(await app.vault.adapter.exists(folderPath))) {
-			await app.vault.createFolder(folderPath).catch(() => {});
+
+		const folderPath = normalizePath(destFolder || "");
+
+		// Ensure destination folder exists
+		if (
+			folderPath !== "" &&
+			!(await this.app.vault.adapter.exists(folderPath))
+		) {
+			await this.app.vault.createFolder(folderPath);
 		}
-	
-		// Make sure file name is unique
-		let filePath = normalizePath(`${folderPath}/${file.name}`);
+
+		const originalName = file.name;
+
+		const dotIndex = originalName.lastIndexOf(".");
+
+		const fileBase =
+			dotIndex > 0
+				? originalName.substring(0, dotIndex)
+				: originalName;
+
+		const fileExt =
+			dotIndex > 0
+				? originalName.substring(dotIndex + 1)
+				: "";
+
+		// --------------------------------------------------------
+		// Find unique filename
+		// --------------------------------------------------------
+
+		let fileName = originalName;
+
+		let filePath = normalizePath(
+			folderPath
+				? `${folderPath}/${fileName}`
+				: fileName
+		);
+
 		let counter = 1;
-		const fileExt = file.name.split('.').pop();
-		const fileBase = file.name.substring(0, file.name.lastIndexOf('.'));
-		while (await app.vault.adapter.exists(filePath)) {
-			filePath = normalizePath(`${folderPath}/${fileBase}-${counter}.${fileExt}`);
+
+		while (await this.app.vault.adapter.exists(filePath)) {
+			fileName = fileExt
+				? `${fileBase}-${counter}.${fileExt}`
+				: `${fileBase}-${counter}`;
+
+			filePath = normalizePath(
+				folderPath
+					? `${folderPath}/${fileName}`
+					: fileName
+			);
+
 			counter++;
 		}
-	
-		await app.vault.createBinary(filePath, arrayBuffer);
+
+		await this.app.vault.createBinary(
+			filePath,
+			arrayBuffer
+		);
+
 		return filePath;
 	}
 
+	// ------------------------------------------------------------
+	// Save Markdown
+	// ------------------------------------------------------------
 
-	async createMarkdownWithMetadata(
-		app: App,
+	async saveMarkdown(
 		imagePath: string,
 		destFolder: string,
-		tags: string[],
-		source: string,
-		description: string
+		tags: string[]
 	): Promise<string> {
-		const fileName = imagePath.split("/").pop()!;
-		const fileNameWithoutExtension = fileName.substring(0, fileName.lastIndexOf('.')) || fileName;
-		const mdFileName = `${fileNameWithoutExtension}.md`;
-		const folderPath = normalizePath(destFolder);
+		const fileName =
+			imagePath.split("/").pop() || "Imported File";
 
-		// Ensure folder exists
-		if (folderPath !== "" && !(await app.vault.adapter.exists(folderPath))) {
-			await app.vault.createFolder(folderPath).catch(() => {});
+		const extensionIndex = fileName.lastIndexOf(".");
+
+		const fileNameWithoutExtension =
+			extensionIndex > 0
+				? fileName.substring(0, extensionIndex)
+				: fileName;
+
+		const folderPath = normalizePath(destFolder || "");
+
+		// Ensure note destination exists
+		if (
+			folderPath !== "" &&
+			!(await this.app.vault.adapter.exists(folderPath))
+		) {
+			await this.app.vault.createFolder(folderPath);
 		}
 
-		const mdFilePath = normalizePath(`${folderPath}/${mdFileName}`);
-		let finalMdFilePath = mdFilePath;
+		// --------------------------------------------------------
+		// Find unique Markdown filename
+		// --------------------------------------------------------
+
+		let mdFileName = `${fileNameWithoutExtension}.md`;
+
+		let mdFilePath = normalizePath(
+			folderPath
+				? `${folderPath}/${mdFileName}`
+				: mdFileName
+		);
+
 		let counter = 1;
-		while (await app.vault.adapter.exists(finalMdFilePath)) {
-			finalMdFilePath = normalizePath(`${folderPath}/${fileNameWithoutExtension}-${counter}.md`);
+
+		while (await this.app.vault.adapter.exists(mdFilePath)) {
+			mdFileName = `${fileNameWithoutExtension}-${counter}.md`;
+
+			mdFilePath = normalizePath(
+				folderPath
+					? `${folderPath}/${mdFileName}`
+					: mdFileName
+			);
+
 			counter++;
 		}
 
-		// Prepare frontmatter
-		const frontmatterLines = [
+		// --------------------------------------------------------
+		// Frontmatter
+		// --------------------------------------------------------
+
+		let content = this.createFrontMatterLines(tags);
+
+		// Use a proper Obsidian wikilink
+		content += `![[${imagePath}]]`;
+
+		// Description
+		if (this.description.trim()) {
+			content += `\n\n${this.description.trim()}`;
+		}
+
+		await this.app.vault.create(
+			mdFilePath,
+			content
+		);
+
+		return mdFilePath;
+	}
+
+	// ------------------------------------------------------------
+	// Frontmatter
+	// ------------------------------------------------------------
+
+	createFrontMatterLines(tags: string[]): string {
+		const frontmatterLines: string[] = [
 			"---",
-			`tags: [${tags.map(t => t.trim()).filter(Boolean).join(", ")}]`,
-			`resource: "[[${imagePath}]]"`,
 		];
 
-		if (source.trim()) {
-			frontmatterLines.push(`source: "${source.replace(/"/g, '\\"')}"`);
+		// --------------------------------------------------------
+		// Tags
+		// --------------------------------------------------------
+
+		if (tags.length > 0) {
+			const cleanedTags = tags
+				.map((tag) => tag.trim())
+				.filter(Boolean)
+				.map((tag) => {
+					// Quote tags containing characters that could
+					// interfere with YAML.
+					if (/[\s,:#[\]{}"'`]/.test(tag)) {
+						return `"${tag.replace(/"/g, '\\"')}"`;
+					}
+
+					return tag;
+				});
+
+			frontmatterLines.push(
+				`tags: [${cleanedTags.join(", ")}]`
+			);
+		}
+
+		// --------------------------------------------------------
+		// Source
+		// --------------------------------------------------------
+
+		if (this.source.trim()) {
+			const escapedSource = this.source
+				.trim()
+				.replace(/\\/g, "\\\\")
+				.replace(/"/g, '\\"');
+
+			frontmatterLines.push(
+				`source: "${escapedSource}"`
+			);
+		}
+
+		// --------------------------------------------------------
+		// EXIF
+		// --------------------------------------------------------
+
+		if (this.extractExif) {
+			this.addLocationToFrontmatter(frontmatterLines);
+			this.addDateToFrontmatter(frontmatterLines);
 		}
 
 		frontmatterLines.push("---");
-	
-		// Embed syntax (use ![[...]] for image, normal link for PDFs)
-		const isImage = /\.(png|jpe?g|gif|bmp|webp)$/i.test(imagePath);
-		let content = frontmatterLines.join("\n") + "\n\n";
-		
-		content += isImage
-			? `![[${imagePath}]]`
-			: `[Open file](${imagePath})`;
-		
-		if (description.trim()) {
-			content += "\n\n" + description.trim();
-		}
-	
-		// Save the file
-		await app.vault.create(finalMdFilePath, content);
-		return finalMdFilePath;
+
+		// IMPORTANT: newline, not "/n"
+		return frontmatterLines.join("\n") + "\n";
 	}
 
+	// ------------------------------------------------------------
+	// Location
+	// ------------------------------------------------------------
 
+	addLocationToFrontmatter(
+		frontmatterLines: string[]
+	): void {
+		if (
+			this.latitude !== null &&
+			this.longitude !== null
+		) {
+			frontmatterLines.push(
+				`latitude: ${this.latitude}`
+			);
+
+			frontmatterLines.push(
+				`longitude: ${this.longitude}`
+			);
+
+			frontmatterLines.push(
+				`location: "${this.latitude}, ${this.longitude}"`
+			);
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Date
+	// ------------------------------------------------------------
+
+	addDateToFrontmatter(
+		frontmatterLines: string[]
+	): void {
+		if (!this.exifDate) {
+			return;
+		}
+
+		// EXIF dates are commonly:
+		// YYYY:MM:DD HH:mm:ss
+		const normalizedDate = this.exifDate.replace(
+			/^(\d{4}):(\d{2}):(\d{2})/,
+			"$1-$2-$3"
+		);
+
+		const dateObj = new Date(
+			normalizedDate.replace(" ", "T")
+		);
+
+		if (!Number.isNaN(dateObj.getTime())) {
+			frontmatterLines.push(
+				`created: ${dateObj.toISOString()}`
+			);
+		}
+
+		frontmatterLines.push(
+			`created-time: "${this.exifDate.replace(/"/g, '\\"')}"`
+		);
+	}
 }
