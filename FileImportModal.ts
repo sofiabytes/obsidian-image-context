@@ -627,7 +627,7 @@ export class FileImportModal extends Modal {
 		// Frontmatter
 		// --------------------------------------------------------
 
-		let content = this.createFrontMatterLines(tags);
+		let content = this.createFrontMatterLines(tags, imagePath);
 
 		// Use a proper Obsidian wikilink
 		content += `![[${imagePath}]]`;
@@ -649,10 +649,16 @@ export class FileImportModal extends Modal {
 	// Frontmatter
 	// ------------------------------------------------------------
 
-	createFrontMatterLines(tags: string[]): string {
+	createFrontMatterLines(tags: string[], imagePath: string): string {
 		const frontmatterLines: string[] = [
 			"---",
 		];
+
+		// --------------------------------------------------------
+		// Resource (wikilink to image)
+		// --------------------------------------------------------
+
+		frontmatterLines.push(`resource: "![[${imagePath}]]"`);
 
 		// --------------------------------------------------------
 		// Tags

@@ -1,94 +1,68 @@
 # PixNote
 
-PixNote is an Obsidian plugin for importing images and PDFs with metadata, tags, and EXIF data.
+PixNote is an Obsidian plugin for importing images with metadata pages auto-populated with tags, and EXIF data.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This plugin demonstrates the following functionality:
-- Adds a command "Add image with metadata" which opens a modal to import files.
-- Extracts EXIF metadata including GPS coordinates and date from images.
-- Creates metadata notes with tags, source URLs, and EXIF data.
-- Saves images to a configured folder with unique filenames.
-- Saves associated markdown notes with frontmatter metadata.
+- **Import Images**: Select files from your computer and add them to your vault with associated metadata notes
+- **EXIF Data Extraction**: Automatically extract date and location from image metadata when enabled
+- **Custom Metadata**: Add tags, source URLs, and descriptions to each imported file
+- **Organized Folders**: Configure separate folders for images and metadata notes
+- **Frontmatter Notes**: Generated notes include YAML frontmatter with all metadata for easy querying
 
-## First time developing plugins?
+## Installation
 
-Quick starting guide for new plugin devs:
+1. Install via Community Plugins in Obsidian settings
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Usage
 
-## Releasing new releases
+1. Enable the plugin in Obsidian settings
+2. Run the **"Add image with metadata"** command
+3. Select an image
+4. Configure:
+   - **Image folder**: Where to save the file
+   - **Note folder**: Where to save the metadata note
+   - **Tags**: Comma-separated tags (e.g., `reading, quote`)
+   - **Source**: URL or reference for the image
+   - **Description**: Additional notes about the file
+   - **Extract EXIF**: Enable to include GPS coordinates and date
+5. Click **"Create File"** to import
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-releases/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Generated Notes
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Each import creates:
+1. An image/PDF file in the configured folder
+2. A markdown note with:
+   - Frontmatter containing tags, source, EXIF data
+   - A wikilink to the image
+   - Your description (if provided)
 
-## Adding your plugin to the community plugin list
+### Frontmatter Example
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+```yaml
+---
+tags: [reading, quote]
+source: "https://example.com"
+created: 2024-01-15T10:30:00.000Z
+created-time: "2024:01:15 10:30:00"
+latitude: 40.7128
+longitude: -74.0060
+location: "40.7128, -74.0060"
+---
+![[image.jpg]]
 
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+Your description here...
 ```
 
-If you have multiple URLs, you can also do:
+## Settings
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+Configure in Obsidian settings under the PixNote plugin tab:
 
-## API Documentation
+- **Image Folder**: Default path where imported images/PDFs are saved
+- **Metadata Note Folder**: Default path where associated markdown notes are saved
+- **Extract EXIF Data**: Enable to automatically extract date and GPS from images
 
-See https://github.com/obsidianmd/obsidian-api
+
+## License
+
+MIT
