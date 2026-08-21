@@ -1,11 +1,11 @@
 {
-	"id": "image-import-plugin",
-	"name": "Image Import Plugin",
-	"version": "1.2.2",
+	"id": "pixnote",
+	"name": "PixNote",
+	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Add images with metadata",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
+	"description": "Import images and PDFs with metadata, tags, and EXIF data",
+	"author": "Your Name Here",
+	"authorUrl": "https://github.com/your-username",
 	"fundingUrl": "https://obsidian.md/pricing",
 	"isDesktopOnly": false
 }

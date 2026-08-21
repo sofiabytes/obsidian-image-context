@@ -9,11 +9,11 @@ import {
 	normalizePath,
 	TFile,
 } from "obsidian";
-import type MyPlugin from "./main";
+import type PixNotePlugin from "./main";
 import { load } from "exifreader";
 
 export class FileImportModal extends Modal {
-	plugin: MyPlugin;
+	plugin: PixNotePlugin;
 
 	selectedFile: File | null = null;
 
@@ -32,7 +32,7 @@ export class FileImportModal extends Modal {
 	longitude: number | null = null;
 	exifDate: string | null = null;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
 
 		this.plugin = plugin;
@@ -627,7 +627,7 @@ export class FileImportModal extends Modal {
 		// Frontmatter
 		// --------------------------------------------------------
 
-		let content = this.createFrontMatterLines(tags);
+		let content = this.createFrontMatterLines(tags, imagePath);
 
 		// Use a proper Obsidian wikilink
 		content += `![[${imagePath}]]`;
@@ -649,10 +649,16 @@ export class FileImportModal extends Modal {
 	// Frontmatter
 	// ------------------------------------------------------------
 
-	createFrontMatterLines(tags: string[]): string {
+	createFrontMatterLines(tags: string[], imagePath: string): string {
 		const frontmatterLines: string[] = [
 			"---",
 		];
+
+		// --------------------------------------------------------
+		// Resource (wikilink to image)
+		// --------------------------------------------------------
+
+		frontmatterLines.push(`resource: "![[${imagePath}]]"`);
 
 		// --------------------------------------------------------
 		// Tags
