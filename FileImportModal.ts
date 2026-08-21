@@ -32,7 +32,7 @@ export class FileImportModal extends Modal {
 	longitude: number | null = null;
 	exifDate: string | null = null;
 
-	constructor(app: App, plugin: MyPlugin) {
+	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
 
 		this.plugin = plugin;
