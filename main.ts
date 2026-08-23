@@ -34,7 +34,7 @@ export default class PixNotePlugin extends Plugin {
 
 	onunload() {
 		// Clear the interval when plugin is disabled
-		window.clearInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+		window.clearInterval(window.setInterval(() => {}, 5 * 60 * 1000));
 	}
 
 	async loadSettings() {
@@ -54,41 +54,60 @@ class PixNoteSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
+	// ------------------------------------------------------------
+	// Render settings using the official Obsidian API
+	// ------------------------------------------------------------
 	display(): void {
-		const {containerEl} = this;
-
+		const { containerEl } = this;
 		containerEl.empty();
 
-	new Setting(containerEl)
-				.setName('Image Folder')
-				.setDesc('Where images and PDFs are saved')
-				.addText(text => text
-					.setPlaceholder('folder/path')
-					.setValue(this.plugin.settings.imageFolder)
-					.onChange(async (value) => {
-						this.plugin.settings.imageFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
-						await this.plugin.saveSettings();
-					}));
+		// ============================================================
+		// Image Folder
+		// ============================================================
+
+		new Setting(containerEl)
+			.setName('Image Folder')
+			.setDesc('Where images and PDFs are saved')
+			.addText(text =>
+				text
+					.setValue(this.plugin.settings.imageFolder || '')
+					.setPlaceholder('e.g. /images')
+					.onChange((newValue) => {
+						this.plugin.settings.imageFolder = newValue.trim().replace(/\/+$/, "").replace(/^\/+/, "");
+						this.plugin.saveSettings();
+					})
+			);
+
+		// ============================================================
+		// Note Folder
+		// ============================================================
 
 		new Setting(containerEl)
 			.setName('Metadata Note Folder')
 			.setDesc('Where the metadata markdown notes are saved')
-			.addText(text => text
-				.setPlaceholder('folder/path')
-				.setValue(this.plugin.settings.noteFolder)
-				.onChange(async (value) => {
-					this.plugin.settings.noteFolder = value.trim().replace(/\/+$/, "").replace(/^\/+/, "");
-					await this.plugin.saveSettings();
-				}));
-		
+			.addText(text =>
+				text
+					.setValue(this.plugin.settings.noteFolder || '')
+					.setPlaceholder('e.g. /notes')
+					.onChange((newValue) => {
+						this.plugin.settings.noteFolder = newValue.trim().replace(/\/+$/, "").replace(/^\/+/, "");
+						this.plugin.saveSettings();
+					})
+			);
+
+		// ============================================================
+		// Extract EXIF Data
+		// ============================================================
+
 		new Setting(containerEl)
 			.setName('Extract EXIF Data')
 			.setDesc('Automatically extract date and location from image metadata')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.extractExif)
-				.onChange(async (value) => {
-					this.plugin.settings.extractExif = value;
-					await this.plugin.saveSettings();
-				}));
+			.addToggle((toggle) => {
+				toggle.setValue(this.plugin.settings.extractExif)
+					.onChange((value) => {
+						this.plugin.settings.extractExif = value;
+						this.plugin.saveSettings();
+					})
+			})
 	}
 }

@@ -389,8 +389,6 @@ export class FileImportModal extends Modal {
 
 			this.exifData = tags;
 
-			console.log("EXIF data:", tags);
-
 			// --------------------------------------------------------
 			// GPS
 			// --------------------------------------------------------
@@ -658,7 +656,7 @@ export class FileImportModal extends Modal {
 		// Resource (wikilink to image)
 		// --------------------------------------------------------
 
-		frontmatterLines.push(`resource: "![[${imagePath}]]"`);
+		frontmatterLines.push(`resource: "[[${imagePath}]]"`);
 
 		// --------------------------------------------------------
 		// Tags
