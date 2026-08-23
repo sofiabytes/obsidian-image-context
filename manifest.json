@@ -3,7 +3,7 @@
 	"name": "PixNote",
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
-	"description": "Import images and PDFs with metadata, tags, and EXIF data",
+	"description": "Import images and PDFs with metadata, tags, and EXIF data.",
 	"author": "Sofiabytes",
 	"authorUrl": "https://sofiabytes.net",
 	"isDesktopOnly": true
