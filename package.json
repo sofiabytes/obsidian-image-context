@@ -1,6 +1,6 @@
 {
 	"name": "pixnote",
-	"version": "1.0.0",
+	"version": "1.2.3",
 	"description": "Import images and PDFs with metadata, tags, and EXIF data for Obsidian",
 	"main": "main.js",
 	"scripts": {
