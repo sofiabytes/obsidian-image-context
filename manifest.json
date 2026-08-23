@@ -1,11 +1,10 @@
 {
 	"id": "pixnote",
 	"name": "PixNote",
-	"version": "1.0.0",
+	"version": "1.2.3",
 	"minAppVersion": "0.15.0",
-	"description": "Import images and PDFs with metadata, tags, and EXIF data",
-	"author": "Your Name Here",
-	"authorUrl": "https://github.com/your-username",
-	"fundingUrl": "https://obsidian.md/pricing",
-	"isDesktopOnly": false
+	"description": "Import images and PDFs with metadata, tags, and EXIF data.",
+	"author": "Sofiabytes",
+	"authorUrl": "https://sofiabytes.net",
+	"isDesktopOnly": true
 }

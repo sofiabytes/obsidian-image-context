@@ -1,6 +1,48 @@
 import esbuild from "esbuild";
 import process from "process";
-import builtins from "builtin-modules";
+
+const builtins = [
+	"assert",
+	"buffer",
+	"child_process",
+	"cluster",
+	"console",
+	"constants",
+	"crypto",
+	"dgram",
+	"dns",
+	"domain",
+	"events",
+	"fs",
+	"http",
+	"https",
+	"inspector",
+	"net",
+	"os",
+	"path",
+	"process",
+	"punycode",
+	"querystring",
+	"readline",
+	"repl",
+	"stream",
+	"string_decoder",
+	"timers",
+	"tls",
+	"trace_events",
+	"tty",
+	"url",
+	"util",
+	"vm",
+	"zlib",
+	"async_hooks",
+	"perf_hooks",
+	"diagnostics_channel",
+	"module",
+	"worker_threads",
+	"wasi",
+	"test",
+];
 
 const banner =
 `/*
