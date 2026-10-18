@@ -11,6 +11,69 @@ import {
 } from "obsidian";
 import type PixNotePlugin from "./main";
 import { load } from "exifreader";
+import { DateExifManager, LocationExifManager, CaptionExifManager, CameraExifManager, ImageDetailsExifManager } from './exif-manager';
+import { getAllManagerIds, getManagerConfigById } from './exif-config';
+import { ExifManagerConfig } from './exif-config';
+
+// Map EXIF IDs to their manager classes
+const EXIF_MANAGER_MAP: Record<string, new (filePath: string | null) => any> = {
+	date: DateExifManager,
+	location: LocationExifManager,
+	captions: CaptionExifManager,
+	camera: CameraExifManager,
+	'image-details': ImageDetailsExifManager
+};
+
+// Map of EXIF tag names to manager keys
+const EXIF_TAG_MAPPINGS: Record<string, [string, string][]> = {
+	date: [
+		['DateTimeOriginal', 'DateTimeOriginal'],
+		['DateTimeDigitized', 'Created'],
+		['ModifyDate', 'Modified'],
+		['Year', 'Year'],
+		['Month', 'Month'],
+		['Day', 'Day'],
+		['CreateDate', 'Created'],
+	],
+	location: [
+		['GPSLatitude', 'GPSLatitude'],
+		['GPSLongitude', 'GPSLongitude'],
+		['GPSInfo', 'GPSInfo'],
+		['GPSLatitudeRef', 'LatitudeDirection'],
+		['GPSLongitudeRef', 'LongitudeDirection'],
+	],
+	captions: [
+		['ImageDescription', 'ImageDescription'],
+		['ImageTitle', 'ImageTitle'],
+		['Artist', 'Artist'],
+		['Copyright', 'Copyright'],
+	],
+	camera: [
+		['ImageWidth', 'ImageWidth'],
+		['ImageHeight', 'ImageHeight'],
+		['FocalLength', 'FocalLength'],
+		['ISOSpeedRatings', 'ISOSpeedRatings'],
+		['FNumber', 'FNumber'],
+		['ExposureTime', 'ExposureTime'],
+		['Make', 'Make'],
+		['Model', 'Model'],
+		['ExposureProgram', 'ExposureProgram'],
+		['WhiteBalance', 'WhiteBalance'],
+		['Flash', 'Flash'],
+		['MeteringMode', 'MeteringMode'],
+	],
+	'image-details': [
+		['ColorDepth', 'ColorDepth'],
+		['BitsPerSample', 'BitsPerSample'],
+		['ResolutionUnit', 'ResolutionUnit'],
+		['Compression', 'Compression'],
+		['FileSize', 'FileSize'],
+		['Orientation', 'Orientation'],
+		['Software', 'Software'],
+		['PixelXDimension', 'PixelXDimension'],
+		['PixelYDimension', 'PixelYDimension'],
+	]
+};
 
 export class FileImportModal extends Modal {
 	plugin: PixNotePlugin;
@@ -24,13 +87,14 @@ export class FileImportModal extends Modal {
 	imageDestFolder: string;
 	noteDestFolder: string;
 
-	extractExif: boolean;
-
 	// EXIF data
 	exifData: Record<string, any> | null = null;
 	latitude: number | null = null;
 	longitude: number | null = null;
 	exifDate: string | null = null;
+
+	// Track which managers we've created
+	private managers: Map<string, any> = new Map();
 
 	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
@@ -39,7 +103,17 @@ export class FileImportModal extends Modal {
 
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
-		this.extractExif = this.plugin.settings.extractExif || false;
+
+		// Enable all EXIF managers by default
+		const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
+		
+		// Initialize managers for enabled types
+		enabledManagers.forEach(id => {
+			const ManagerClass = EXIF_MANAGER_MAP[id];
+			if (ManagerClass) {
+				this.managers.set(id, new ManagerClass(null));
+			}
+		});
 	}
 
 	// ------------------------------------------------------------
@@ -244,7 +318,7 @@ export class FileImportModal extends Modal {
 
 		// ============================================================
 		// Description
-		// ============================================================
+		// ------------------------------------------------------------
 
 		contentEl.createEl("label", {
 			text: "Description:",
@@ -277,7 +351,7 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		exifCheckbox.checked = this.extractExif;
+		exifCheckbox.checked = this.plugin.settings.exifManagers?.length > 0;
 
 		const exifLabel = exifContainer.createEl("label", {
 			text: " Extract EXIF metadata",
@@ -286,7 +360,7 @@ export class FileImportModal extends Modal {
 		exifLabel.prepend(exifCheckbox);
 
 		exifCheckbox.onchange = () => {
-			this.extractExif = exifCheckbox.checked;
+			exifCheckbox.checked = exifCheckbox.checked;
 		};
 
 		contentEl.createEl("br");
@@ -321,7 +395,7 @@ export class FileImportModal extends Modal {
 			this.resetExifData();
 
 			// Extract EXIF before saving
-			if (this.extractExif) {
+			if (this.plugin.settings.exifManagers?.length > 0) {
 				await this.extractExifData(this.selectedFile);
 			}
 
@@ -333,7 +407,8 @@ export class FileImportModal extends Modal {
 
 			// Parse tags
 			const tagArray = this.tags
-				.split(",")
+				
+		.split(",")
 				.map((tag) => tag.trim())
 				.filter(Boolean);
 
@@ -374,6 +449,21 @@ export class FileImportModal extends Modal {
 		this.latitude = null;
 		this.longitude = null;
 		this.exifDate = null;
+
+		// Clear all managers
+		this.managers.forEach(manager => {
+			manager.clear();
+		});
+		this.managers.clear();
+
+		// Re-initialize managers
+		const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
+		enabledManagers.forEach(id => {
+			const ManagerClass = EXIF_MANAGER_MAP[id];
+			if (ManagerClass) {
+				this.managers.set(id, new ManagerClass(null));
+			}
+		});
 	}
 
 	async extractExifData(file: File): Promise<void> {
@@ -389,10 +479,21 @@ export class FileImportModal extends Modal {
 
 			this.exifData = tags;
 
-			// --------------------------------------------------------
-			// GPS
-			// --------------------------------------------------------
+			// Reset latitude/longitude for GPS handling
+			this.latitude = null;
+			this.longitude = null;
 
+			// Extract data for each enabled EXIF manager
+			const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
+
+			enabledManagers.forEach(id => {
+				const manager = this.managers.get(id);
+				if (manager) {
+					this.extractDataForManager(tags, manager, id);
+				}
+			});
+
+			// Extract GPS coordinates
 			const gpsLatitude = tags["GPSLatitude"];
 			const gpsLongitude = tags["GPSLongitude"];
 
@@ -401,10 +502,7 @@ export class FileImportModal extends Modal {
 				this.longitude = this.getExifNumber(gpsLongitude);
 			}
 
-			// --------------------------------------------------------
-			// Date
-			// --------------------------------------------------------
-
+			// Extract date
 			const dateTag =
 				tags["DateTimeOriginal"] ||
 				tags["DateTimeDigitized"] ||
@@ -418,6 +516,25 @@ export class FileImportModal extends Modal {
 
 			// Don't abort the entire import because EXIF failed.
 			new Notice("Could not read EXIF metadata.");
+		}
+	}
+
+	/**
+	 * Extract data for a specific EXIF manager
+	 */
+	private extractDataForManager(tags: any, manager: any, managerId: string): void {
+		// Get all EXIF values
+		const allTags = tags.tags || tags;
+
+		// Map EXIF tag names to manager's set() method
+		const mappings = EXIF_TAG_MAPPINGS[managerId];
+		if (mappings) {
+			mappings.forEach(([exifTag, managerKey]) => {
+				const value = allTags[exifTag];
+				if (value) {
+					manager.set(managerKey, value);
+				}
+			});
 		}
 	}
 
@@ -700,9 +817,20 @@ export class FileImportModal extends Modal {
 		// EXIF
 		// --------------------------------------------------------
 
-		if (this.extractExif) {
-			this.addLocationToFrontmatter(frontmatterLines);
-			this.addDateToFrontmatter(frontmatterLines);
+		if (this.plugin.settings.exifManagers?.length > 0) {
+			// Generate frontmatter for each enabled EXIF manager
+			const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
+			
+			enabledManagers.forEach(id => {
+				const config = getManagerConfigById(id);
+				if (config) {
+					const manager = this.managers.get(id);
+					if (manager) {
+						const frontmatter = manager.toFrontmatter();
+						this.addManagerToFrontmatter(frontmatterLines, frontmatter, config);
+					}
+				}
+			});
 		}
 
 		frontmatterLines.push("---");
@@ -711,61 +839,58 @@ export class FileImportModal extends Modal {
 		return frontmatterLines.join("\n") + "\n";
 	}
 
-	// ------------------------------------------------------------
-	// Location
-	// ------------------------------------------------------------
+	/**
+	 * Add frontmatter from a single manager to the lines
+	 */
+	private addManagerToFrontmatter(lines: string[], frontmatter: any, config: ExifManagerConfig): void {
+		// Add frontmatter keys in a consistent order
+		const keyOrder: string[] = [
+			'source',
+			'file path',
+			'width',
+			'height',
+			config.frontendKey
+		];
 
-	addLocationToFrontmatter(
-		frontmatterLines: string[]
-	): void {
-		if (
-			this.latitude !== null &&
-			this.longitude !== null
-		) {
-			frontmatterLines.push(
-				`latitude: ${this.latitude}`
-			);
-
-			frontmatterLines.push(
-				`longitude: ${this.longitude}`
-			);
-
-			frontmatterLines.push(
-				`location: "${this.latitude}, ${this.longitude}"`
-			);
-		}
+		keyOrder.forEach(key => {
+			if (frontmatter[key] !== undefined && frontmatter[key] !== null) {
+				lines.push(`${key}: ${this.formatValue(frontmatter[key])}`);
+			}
+		});
 	}
 
-	// ------------------------------------------------------------
-	// Date
-	// ------------------------------------------------------------
-
-	addDateToFrontmatter(
-		frontmatterLines: string[]
-	): void {
-		if (!this.exifDate) {
-			return;
+	/**
+	 * Format a value for frontmatter
+	 */
+	private formatValue(value: any): string {
+		if (value === null || value === undefined) {
+			return '';
 		}
 
-		// EXIF dates are commonly:
-		// YYYY:MM:DD HH:mm:ss
-		const normalizedDate = this.exifDate.replace(
-			/^(\d{4}):(\d{2}):(\d{2})/,
-			"$1-$2-$3"
-		);
-
-		const dateObj = new Date(
-			normalizedDate.replace(" ", "T")
-		);
-
-		if (!Number.isNaN(dateObj.getTime())) {
-			frontmatterLines.push(
-				`created: ${dateObj.toISOString()}`
-			);
+		if (typeof value === 'boolean') {
+			return value.toString();
 		}
 
-		frontmatterLines.push(
-			`created-time: "${this.exifDate.replace(/"/g, '\\"')}"`
-		);
+		if (typeof value === 'number') {
+			return value.toString();
+		}
+
+		if (typeof value === 'string') {
+			// Quote strings that might contain special characters
+			if (/["\n\r]/.test(value)) {
+				return `"${value.replace(/"/g, '\\"')}"`;
+			}
+			return value;
+		}
+
+		if (Array.isArray(value)) {
+			return `[${value.map(v => this.formatValue(v)).join(', ')}]`;
+		}
+
+		if (typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+
+		return String(value);
 	}
 }

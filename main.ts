@@ -1,16 +1,19 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { FileImportModal } from "./FileImportModal"
+import { FileImportModal } from "./FileImportModal";
+import { EXIF_MANAGER_CONFIGS, getAllManagerIds } from './exif-config';
 
 interface PixNotePluginSettings {
 	imageFolder: string;
 	noteFolder: string;
-	extractExif: boolean;
+	// All EXIF manager IDs that should extract data
+	exifManagers: string[];
 }
 
 const DEFAULT_SETTINGS: PixNotePluginSettings = {
 	imageFolder: '',
 	noteFolder: '',
-	extractExif: true
+	// Enable all EXIF managers by default
+	exifManagers: getAllManagerIds()
 }
 
 export default class PixNotePlugin extends Plugin {
@@ -96,18 +99,43 @@ class PixNoteSettingTab extends PluginSettingTab {
 			);
 
 		// ============================================================
-		// Extract EXIF Data
+		// EXIF Data Extraction
 		// ============================================================
 
 		new Setting(containerEl)
-			.setName('Extract EXIF Data')
-			.setDesc('Automatically extract date and location from image metadata')
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.extractExif)
-					.onChange((value) => {
-						this.plugin.settings.extractExif = value;
-						this.plugin.saveSettings();
-					})
-			})
+			.setName('EXIF Extraction Settings')
+			.setDesc('Choose which types of metadata to extract from images')
+			.setHeading();
+
+		// Render a toggle for each EXIF manager
+		const enabledManagers = this.plugin.settings.exifManagers || [];
+
+		EXIF_MANAGER_CONFIGS.forEach(config => {
+			const isChecked = enabledManagers.includes(config.id);
+
+			new Setting(containerEl)
+				.setName(config.name)
+				.setDesc(config.description)
+				.addToggle((toggle) => {
+					toggle
+						.setValue(isChecked)
+						.onChange((value) => {
+							if (value) {
+								// Add to list if not already present
+								if (!enabledManagers.includes(config.id)) {
+									this.plugin.settings.exifManagers = [
+										...this.plugin.settings.exifManagers,
+										config.id
+									];
+								}
+							} else {
+								// Remove from list
+								this.plugin.settings.exifManagers =
+									this.plugin.settings.exifManagers.filter(id => id !== config.id);
+							}
+							this.plugin.saveSettings();
+						});
+				});
+		});
 	}
 }
