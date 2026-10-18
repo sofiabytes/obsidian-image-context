@@ -10,70 +10,8 @@ import {
 	TFile,
 } from "obsidian";
 import type PixNotePlugin from "./main";
+import {ImageDetailsExifManager, CameraExifManager, CaptionExifManager, LocationExifManager, DateExifManager} from "./exif-manager"
 import { load } from "exifreader";
-import { DateExifManager, LocationExifManager, CaptionExifManager, CameraExifManager, ImageDetailsExifManager } from './exif-manager';
-import { getAllManagerIds, getManagerConfigById } from './exif-config';
-import { ExifManagerConfig } from './exif-config';
-
-// Map EXIF IDs to their manager classes
-const EXIF_MANAGER_MAP: Record<string, new (filePath: string | null) => any> = {
-	date: DateExifManager,
-	location: LocationExifManager,
-	captions: CaptionExifManager,
-	camera: CameraExifManager,
-	'image-details': ImageDetailsExifManager
-};
-
-// Map of EXIF tag names to manager keys
-const EXIF_TAG_MAPPINGS: Record<string, [string, string][]> = {
-	date: [
-		['DateTimeOriginal', 'DateTimeOriginal'],
-		['DateTimeDigitized', 'Created'],
-		['ModifyDate', 'Modified'],
-		['Year', 'Year'],
-		['Month', 'Month'],
-		['Day', 'Day'],
-		['CreateDate', 'Created'],
-	],
-	location: [
-		['GPSLatitude', 'GPSLatitude'],
-		['GPSLongitude', 'GPSLongitude'],
-		['GPSInfo', 'GPSInfo'],
-		['GPSLatitudeRef', 'LatitudeDirection'],
-		['GPSLongitudeRef', 'LongitudeDirection'],
-	],
-	captions: [
-		['ImageDescription', 'ImageDescription'],
-		['ImageTitle', 'ImageTitle'],
-		['Artist', 'Artist'],
-		['Copyright', 'Copyright'],
-	],
-	camera: [
-		['ImageWidth', 'ImageWidth'],
-		['ImageHeight', 'ImageHeight'],
-		['FocalLength', 'FocalLength'],
-		['ISOSpeedRatings', 'ISOSpeedRatings'],
-		['FNumber', 'FNumber'],
-		['ExposureTime', 'ExposureTime'],
-		['Make', 'Make'],
-		['Model', 'Model'],
-		['ExposureProgram', 'ExposureProgram'],
-		['WhiteBalance', 'WhiteBalance'],
-		['Flash', 'Flash'],
-		['MeteringMode', 'MeteringMode'],
-	],
-	'image-details': [
-		['ColorDepth', 'ColorDepth'],
-		['BitsPerSample', 'BitsPerSample'],
-		['ResolutionUnit', 'ResolutionUnit'],
-		['Compression', 'Compression'],
-		['FileSize', 'FileSize'],
-		['Orientation', 'Orientation'],
-		['Software', 'Software'],
-		['PixelXDimension', 'PixelXDimension'],
-		['PixelYDimension', 'PixelYDimension'],
-	]
-};
 
 export class FileImportModal extends Modal {
 	plugin: PixNotePlugin;
@@ -88,13 +26,7 @@ export class FileImportModal extends Modal {
 	noteDestFolder: string;
 
 	// EXIF data
-	exifData: Record<string, any> | null = null;
-	latitude: number | null = null;
-	longitude: number | null = null;
-	exifDate: string | null = null;
-
-	// Track which managers we've created
-	private managers: Map<string, any> = new Map();
+	exifData: Map<string, unknown> = new Map<string, unknown>();
 
 	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
@@ -103,17 +35,6 @@ export class FileImportModal extends Modal {
 
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
-
-		// Enable all EXIF managers by default
-		const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
-		
-		// Initialize managers for enabled types
-		enabledManagers.forEach(id => {
-			const ManagerClass = EXIF_MANAGER_MAP[id];
-			if (ManagerClass) {
-				this.managers.set(id, new ManagerClass(null));
-			}
-		});
 	}
 
 	// ------------------------------------------------------------
@@ -318,7 +239,7 @@ export class FileImportModal extends Modal {
 
 		// ============================================================
 		// Description
-		// ------------------------------------------------------------
+		// ============================================================
 
 		contentEl.createEl("label", {
 			text: "Description:",
@@ -351,7 +272,7 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		exifCheckbox.checked = this.plugin.settings.exifManagers?.length > 0;
+		exifCheckbox.checked = this.extractExif;
 
 		const exifLabel = exifContainer.createEl("label", {
 			text: " Extract EXIF metadata",
@@ -360,7 +281,7 @@ export class FileImportModal extends Modal {
 		exifLabel.prepend(exifCheckbox);
 
 		exifCheckbox.onchange = () => {
-			exifCheckbox.checked = exifCheckbox.checked;
+			this.extractExif = exifCheckbox.checked;
 		};
 
 		contentEl.createEl("br");
@@ -395,7 +316,7 @@ export class FileImportModal extends Modal {
 			this.resetExifData();
 
 			// Extract EXIF before saving
-			if (this.plugin.settings.exifManagers?.length > 0) {
+			if (this.extractExif) {
 				await this.extractExifData(this.selectedFile);
 			}
 
@@ -407,8 +328,7 @@ export class FileImportModal extends Modal {
 
 			// Parse tags
 			const tagArray = this.tags
-				
-		.split(",")
+				.split(",")
 				.map((tag) => tag.trim())
 				.filter(Boolean);
 
@@ -449,21 +369,6 @@ export class FileImportModal extends Modal {
 		this.latitude = null;
 		this.longitude = null;
 		this.exifDate = null;
-
-		// Clear all managers
-		this.managers.forEach(manager => {
-			manager.clear();
-		});
-		this.managers.clear();
-
-		// Re-initialize managers
-		const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
-		enabledManagers.forEach(id => {
-			const ManagerClass = EXIF_MANAGER_MAP[id];
-			if (ManagerClass) {
-				this.managers.set(id, new ManagerClass(null));
-			}
-		});
 	}
 
 	async extractExifData(file: File): Promise<void> {
@@ -472,126 +377,22 @@ export class FileImportModal extends Modal {
 			return;
 		}
 
-		try {
-			const arrayBuffer = await file.arrayBuffer();
+		const frontmatter_dict: Map<string, string> = new Map()
 
-			const tags = load(arrayBuffer);
-
-			this.exifData = tags;
-
-			// Reset latitude/longitude for GPS handling
-			this.latitude = null;
-			this.longitude = null;
-
-			// Extract data for each enabled EXIF manager
-			const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
-
-			enabledManagers.forEach(id => {
-				const manager = this.managers.get(id);
-				if (manager) {
-					this.extractDataForManager(tags, manager, id);
+		for (const extractor of [DateExifManager]) {
+			try {
+				const extract = await new extractor(file)
+				const frontmatter = await extract.toFrontmatter()
+				
+				for (const [key, value] of frontmatter) {
+					frontmatter_dict.set(key, value)
 				}
-			});
-
-			// Extract GPS coordinates
-			const gpsLatitude = tags["GPSLatitude"];
-			const gpsLongitude = tags["GPSLongitude"];
-
-			if (gpsLatitude && gpsLongitude) {
-				this.latitude = this.getExifNumber(gpsLatitude);
-				this.longitude = this.getExifNumber(gpsLongitude);
-			}
-
-			// Extract date
-			const dateTag =
-				tags["DateTimeOriginal"] ||
-				tags["DateTimeDigitized"] ||
-				tags["DateTime"];
-
-			if (dateTag) {
-				this.exifDate = this.getExifDescription(dateTag);
-			}
-		} catch (error) {
-			console.error("Error extracting EXIF data:", error);
-
-			// Don't abort the entire import because EXIF failed.
-			new Notice("Could not read EXIF metadata.");
-		}
-	}
-
-	/**
-	 * Extract data for a specific EXIF manager
-	 */
-	private extractDataForManager(tags: any, manager: any, managerId: string): void {
-		// Get all EXIF values
-		const allTags = tags.tags || tags;
-
-		// Map EXIF tag names to manager's set() method
-		const mappings = EXIF_TAG_MAPPINGS[managerId];
-		if (mappings) {
-			mappings.forEach(([exifTag, managerKey]) => {
-				const value = allTags[exifTag];
-				if (value) {
-					manager.set(managerKey, value);
-				}
-			});
-		}
-	}
-
-	/**
-	 * Extract a numeric value from an ExifReader tag.
-	 */
-	private getExifNumber(tag: any): number | null {
-		if (!tag) {
-			return null;
-		}
-
-		if (typeof tag.value === "number") {
-			return tag.value;
-		}
-
-		if (typeof tag.description === "number") {
-			return tag.description;
-		}
-
-		// Some EXIF values may be arrays.
-		if (Array.isArray(tag.value)) {
-			const values = tag.value
-				.map((value: any) => {
-					if (typeof value === "number") {
-						return value;
-					}
-
-					if (
-						value &&
-						typeof value === "object" &&
-						"numerator" in value &&
-						"denominator" in value
-					) {
-						return value.numerator / value.denominator;
-					}
-
-					return Number(value);
-				})
-				.filter((value: number) => !Number.isNaN(value));
-
-			if (values.length === 1) {
-				return values[0];
-			}
-
-			// GPS coordinates can be represented as degrees/minutes/seconds.
-			if (values.length >= 3) {
-				return (
-					values[0] +
-					values[1] / 60 +
-					values[2] / 3600
-				);
+			} catch (error) {
+				console.error("Error extracting EXIF data:", error);
+				new Notice("Problem extracting EXIF data: check the console for logs");
 			}
 		}
-
-		const numericValue = Number(tag.description);
-
-		return Number.isNaN(numericValue) ? null : numericValue;
+		this.exifData = frontmatter_dict
 	}
 
 	/**
@@ -764,7 +565,7 @@ export class FileImportModal extends Modal {
 	// Frontmatter
 	// ------------------------------------------------------------
 
-	createFrontMatterLines(tags: string[], imagePath: string): string {
+	async createFrontMatterLines(tags: string[], imagePath: string): Promise<string> {
 		const frontmatterLines: string[] = [
 			"---",
 		];
@@ -814,83 +615,21 @@ export class FileImportModal extends Modal {
 		}
 
 		// --------------------------------------------------------
-		// EXIF
+		// FRONTMATTER
 		// --------------------------------------------------------
 
-		if (this.plugin.settings.exifManagers?.length > 0) {
-			// Generate frontmatter for each enabled EXIF manager
-			const enabledManagers = this.plugin.settings.exifManagers || getAllManagerIds();
-			
-			enabledManagers.forEach(id => {
-				const config = getManagerConfigById(id);
-				if (config) {
-					const manager = this.managers.get(id);
-					if (manager) {
-						const frontmatter = manager.toFrontmatter();
-						this.addManagerToFrontmatter(frontmatterLines, frontmatter, config);
-					}
-				}
-			});
-		}
+        Object.entries(this.exifData).forEach(([key, value]) => {
+  			frontmatterLines.push(`${key}: ${value}`);
+		});
 
+		// --------------------------------------------------------
+		// ENDLINES
+		// --------------------------------------------------------
 		frontmatterLines.push("---");
 
 		// IMPORTANT: newline, not "/n"
 		return frontmatterLines.join("\n") + "\n";
 	}
 
-	/**
-	 * Add frontmatter from a single manager to the lines
-	 */
-	private addManagerToFrontmatter(lines: string[], frontmatter: any, config: ExifManagerConfig): void {
-		// Add frontmatter keys in a consistent order
-		const keyOrder: string[] = [
-			'source',
-			'file path',
-			'width',
-			'height',
-			config.frontendKey
-		];
 
-		keyOrder.forEach(key => {
-			if (frontmatter[key] !== undefined && frontmatter[key] !== null) {
-				lines.push(`${key}: ${this.formatValue(frontmatter[key])}`);
-			}
-		});
-	}
-
-	/**
-	 * Format a value for frontmatter
-	 */
-	private formatValue(value: any): string {
-		if (value === null || value === undefined) {
-			return '';
-		}
-
-		if (typeof value === 'boolean') {
-			return value.toString();
-		}
-
-		if (typeof value === 'number') {
-			return value.toString();
-		}
-
-		if (typeof value === 'string') {
-			// Quote strings that might contain special characters
-			if (/["\n\r]/.test(value)) {
-				return `"${value.replace(/"/g, '\\"')}"`;
-			}
-			return value;
-		}
-
-		if (Array.isArray(value)) {
-			return `[${value.map(v => this.formatValue(v)).join(', ')}]`;
-		}
-
-		if (typeof value === 'object') {
-			return JSON.stringify(value);
-		}
-
-		return String(value);
-	}
 }

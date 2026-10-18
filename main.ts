@@ -17,7 +17,8 @@ const DEFAULT_SETTINGS: PixNotePluginSettings = {
 }
 
 export default class PixNotePlugin extends Plugin {
-	settings: PixNotePluginSettings;
+	settings!: PixNotePluginSettings;
+
 
 	async onload() {
 		await this.loadSettings();

@@ -2,6 +2,7 @@
  * EXIF Data Manager
  * Manages different types of EXIF metadata from images
  */
+import { load } from "exifreader";
 
 export interface ExifData {
   [key: string]: unknown;
@@ -15,51 +16,50 @@ export interface FrontmatterRecord {
  * Base class for EXIF managers
  */
 export class ExifManager {
-  protected filePath: string | null;
-  protected data: Map<string, unknown>;
+  protected file: File;
+  protected exifData: Record<string, any>;
 
-  constructor(filePath: string | null = null) {
-    this.filePath = filePath;
-    this.data = new Map();
+  constructor(file: File) {
+    this.file = file
+    this.exifData = {};
+    this.getAll()
   }
 
   /**
    * Set a single EXIF value
    */
   set(key: string, value: unknown): void {
-    this.data.set(key, value);
+    this.exifData.set(key, value);
   }
 
   /**
    * Get a single EXIF value
    */
   get(key: string): unknown | undefined {
-    return this.data.get(key);
+    return this.exifData[key] || null;
+    //return this.data.get(key);
   }
 
   /**
    * Get all EXIF values as an object
    */
-  getAll(): ExifData {
-    const result: ExifData = {};
-    for (const [key, value] of this.data.entries()) {
-      result[key] = value;
-    }
-    return result;
+  async getAll(): Promise<void> {
+    const arrayBuffer = await this.file.arrayBuffer();
+    const tags = load(arrayBuffer);
+    this.exifData = tags;
   }
-
   /**
    * Clear all EXIF data
    */
   clear(): void {
-    this.data.clear();
+    this.exifData.clear();
   }
 
   /**
    * Check if EXIF data exists
    */
   hasData(): boolean {
-    return this.data.size > 0;
+    return this.exifData.size > 0;
   }
 }
 
@@ -67,9 +67,9 @@ export class ExifManager {
  * Manages date-related EXIF data
  */
 export class DateExifManager extends ExifManager {
-  toFrontmatter(): FrontmatterRecord {
+  async toFrontmatter(): Promise<FrontmatterRecord> {
     const frontmatter: FrontmatterRecord = {
-      source: this.filePath,
+      source: this.file,
     };
 
     // Map EXIF data to Obsidian frontmatter keys
@@ -90,9 +90,9 @@ export class DateExifManager extends ExifManager {
  * Manages location-related EXIF data
  */
 export class LocationExifManager extends ExifManager {
-  toFrontmatter(): FrontmatterRecord {
+  async toFrontmatter(): Promise<FrontmatterRecord> {
     const frontmatter: FrontmatterRecord = {
-      source: this.filePath,
+      source: this.file,
     };
 
     // Map EXIF data to Obsidian frontmatter keys
@@ -113,9 +113,9 @@ export class LocationExifManager extends ExifManager {
  * Manages caption-related EXIF data
  */
 export class CaptionExifManager extends ExifManager {
-  toFrontmatter(): FrontmatterRecord {
+  async toFrontmatter(): Promise<FrontmatterRecord> {
     const frontmatter: FrontmatterRecord = {
-      source: this.filePath,
+      source: this.file,
     };
 
     // Map EXIF data to Obsidian frontmatter keys
@@ -136,9 +136,9 @@ export class CaptionExifManager extends ExifManager {
  * Manages camera-related EXIF data
  */
 export class CameraExifManager extends ExifManager {
-  toFrontmatter(): FrontmatterRecord {
+  async toFrontmatter(): Promise<FrontmatterRecord> {
     const frontmatter: FrontmatterRecord = {
-      source: this.filePath,
+      source: this.file,
     };
 
     // Map EXIF data to Obsidian frontmatter keys
@@ -163,9 +163,9 @@ export class CameraExifManager extends ExifManager {
  * Manages image details EXIF data
  */
 export class ImageDetailsExifManager extends ExifManager {
-  toFrontmatter(): FrontmatterRecord {
+  async toFrontmatter(): Promise<FrontmatterRecord> {
     const frontmatter: FrontmatterRecord = {
-      source: this.filePath,
+      source: this.file,
     };
 
     // Map EXIF data to Obsidian frontmatter keys
