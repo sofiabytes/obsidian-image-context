@@ -65,6 +65,13 @@ export class ExifManager {
   hasData(): boolean {
     return Object.keys(this.exifData).length > 0;
   }
+    async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
+    const frontmatter: FrontmatterRecord = {
+      source: this.file,
+    };
+    return frontmatter;
+  }
 }
 
 /**

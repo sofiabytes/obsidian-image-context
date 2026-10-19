@@ -12,6 +12,7 @@ import {
 import type PixNotePlugin from "./main";
 import {ImageDetailsExifManager, CameraExifManager, CaptionExifManager, LocationExifManager, DateExifManager} from "./exif-manager"
 import { load } from "exifreader";
+import { EXIF_MANAGER_CONFIGS, getAllManagerIds } from './exif-config';
 
 export class FileImportModal extends Modal {
 	plugin: PixNotePlugin;
@@ -377,13 +378,17 @@ export class FileImportModal extends Modal {
 
 		const frontmatter_dict: Map<string, string> = new Map()
 
-		for (const extractor of [DateExifManager]) {
+		for (const extractor of EXIF_MANAGER_CONFIGS) {
 			try {
-				const extract = await new extractor(file)
+				const extract = await new extractor.className(file)
 				const frontmatter = await extract.toFrontmatter()
 				
         		for (const [key, value] of Object.entries(frontmatter)) {
             		frontmatter_dict.set(key as string, value as string);
+// const instances = exifManagers.map(config => {
+//   const ManagerClass = config.className;
+//   return new ManagerClass(file);
+// });
 				}
 			} catch (error) {
 				console.error("Error extracting EXIF data:", error);

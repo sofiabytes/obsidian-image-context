@@ -2,12 +2,14 @@
  * EXIF Manager Configuration
  * Defines all available EXIF manager classes and their frontmatter mappings
  */
+import {ImageDetailsExifManager, CameraExifManager, ExifManager, CaptionExifManager, LocationExifManager, DateExifManager} from "./exif-manager"
 
 export interface ExifManagerConfig {
   id: string;
   name: string;
   description: string;
   frontendKey: string;
+  className: new (file: File) => ExifManager;
 }
 
 export const EXIF_MANAGER_CONFIGS: ExifManagerConfig[] = [
@@ -15,31 +17,36 @@ export const EXIF_MANAGER_CONFIGS: ExifManagerConfig[] = [
     id: 'date',
     name: 'Date & Time',
     description: 'Extract date and time metadata from images',
-    frontendKey: 'date'
+    frontendKey: 'date',
+    className: DateExifManager
   },
   {
     id: 'location',
     name: 'Location (GPS)',
     description: 'Extract GPS coordinates and location data',
-    frontendKey: 'location'
+    frontendKey: 'location',
+    className: LocationExifManager
   },
   {
     id: 'captions',
     name: 'Captions & Tags',
     description: 'Extract image descriptions and tags',
-    frontendKey: 'captions'
+    frontendKey: 'captions',
+    className: CaptionExifManager
   },
   {
     id: 'camera',
     name: 'Camera Details',
     description: 'Extract camera settings (ISO, aperture, shutter speed, etc.)',
-    frontendKey: 'camera'
+    frontendKey: 'camera',
+    className: CameraExifManager
   },
   {
     id: 'image-details',
     name: 'Image Details',
     description: 'Extract image technical details (resolution, color depth, etc.)',
-    frontendKey: 'image-details'
+    frontendKey: 'image-details',
+    className: ImageDetailsExifManager
   }
 ];
 
