@@ -2,7 +2,7 @@
  * EXIF Data Manager
  * Manages different types of EXIF metadata from images
  */
-import { load } from "exifreader";
+import ExifReader from "exifreader";
 
 export interface ExifData {
   [key: string]: unknown;
@@ -22,22 +22,20 @@ export class ExifManager {
   constructor(file: File) {
     this.file = file
     this.exifData = {};
-    this.getAll()
   }
 
   /**
    * Set a single EXIF value
    */
   set(key: string, value: unknown): void {
-    this.exifData.set(key, value);
+    this.exifData[key] = value;
   }
 
   /**
    * Get a single EXIF value
    */
-  get(key: string): unknown | undefined {
-    return this.exifData[key] || null;
-    //return this.data.get(key);
+  get(key: string): unknown | null {
+    return this.exifData[key]?.value[0] ?? null;
   }
 
   /**
@@ -45,21 +43,27 @@ export class ExifManager {
    */
   async getAll(): Promise<void> {
     const arrayBuffer = await this.file.arrayBuffer();
-    const tags = load(arrayBuffer);
+    const tags = await ExifReader.load(arrayBuffer);
     this.exifData = tags;
+    console.log("this.exifdata: ", this.exifData)
   }
+
+
+
   /**
    * Clear all EXIF data
    */
   clear(): void {
-    this.exifData.clear();
+    Object.keys(this.exifData).forEach(key => {
+      delete this.exifData[key];
+    });
   }
 
   /**
    * Check if EXIF data exists
    */
   hasData(): boolean {
-    return this.exifData.size > 0;
+    return Object.keys(this.exifData).length > 0;
   }
 }
 
@@ -68,10 +72,11 @@ export class ExifManager {
  */
 export class DateExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
     const frontmatter: FrontmatterRecord = {
       source: this.file,
     };
-
+    console.log("this.date: ", this.get('DateTimeOriginal'))
     // Map EXIF data to Obsidian frontmatter keys
     frontmatter.date = this.get('DateTimeOriginal') as string;
     frontmatter['date created'] = this.get('DateTimeOriginal') as string;
@@ -84,6 +89,16 @@ export class DateExifManager extends ExifManager {
 
     return frontmatter;
   }
+  	// 	// EXIF dates are commonly:
+		// // YYYY:MM:DD HH:mm:ss
+		// const normalizedDate = this.exifDate.replace(
+		// 	/^(\d{4}):(\d{2}):(\d{2})/,
+		// 	"$1-$2-$3"
+		// );
+
+		// const dateObj = new Date(
+		// 	normalizedDate.replace(" ", "T")
+		// );
 }
 
 /**
@@ -91,6 +106,7 @@ export class DateExifManager extends ExifManager {
  */
 export class LocationExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
     const frontmatter: FrontmatterRecord = {
       source: this.file,
     };
@@ -114,6 +130,7 @@ export class LocationExifManager extends ExifManager {
  */
 export class CaptionExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
     const frontmatter: FrontmatterRecord = {
       source: this.file,
     };
@@ -137,6 +154,7 @@ export class CaptionExifManager extends ExifManager {
  */
 export class CameraExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
     const frontmatter: FrontmatterRecord = {
       source: this.file,
     };
@@ -164,6 +182,7 @@ export class CameraExifManager extends ExifManager {
  */
 export class ImageDetailsExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
+    await this.getAll();
     const frontmatter: FrontmatterRecord = {
       source: this.file,
     };

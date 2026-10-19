@@ -27,12 +27,13 @@ export class FileImportModal extends Modal {
 
 	// EXIF data
 	exifData: Map<string, unknown> = new Map<string, unknown>();
+	extractExif: Boolean;
 
 	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
 
 		this.plugin = plugin;
-
+        this.extractExif = true;
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
 	}
@@ -272,7 +273,7 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		exifCheckbox.checked = this.extractExif;
+		// exifCheckbox.checked = this.extractExif;
 
 		const exifLabel = exifContainer.createEl("label", {
 			text: " Extract EXIF metadata",
@@ -308,7 +309,7 @@ export class FileImportModal extends Modal {
 			new Notice("Please select a file first.");
 			return;
 		}
-
+		console.log(this.extractExifData)
 		try {
 			new Notice("Importing file...");
 
@@ -365,10 +366,7 @@ export class FileImportModal extends Modal {
 	// ------------------------------------------------------------
 
 	resetExifData() {
-		this.exifData = null;
-		this.latitude = null;
-		this.longitude = null;
-		this.exifDate = null;
+		this.exifData = new Map<string, unknown>();
 	}
 
 	async extractExifData(file: File): Promise<void> {
@@ -384,8 +382,8 @@ export class FileImportModal extends Modal {
 				const extract = await new extractor(file)
 				const frontmatter = await extract.toFrontmatter()
 				
-				for (const [key, value] of frontmatter) {
-					frontmatter_dict.set(key, value)
+        		for (const [key, value] of Object.entries(frontmatter)) {
+            		frontmatter_dict.set(key as string, value as string);
 				}
 			} catch (error) {
 				console.error("Error extracting EXIF data:", error);
@@ -393,6 +391,7 @@ export class FileImportModal extends Modal {
 			}
 		}
 		this.exifData = frontmatter_dict
+		console.log(this.exifData)
 	}
 
 	/**
@@ -543,7 +542,7 @@ export class FileImportModal extends Modal {
 		// Frontmatter
 		// --------------------------------------------------------
 
-		let content = this.createFrontMatterLines(tags, imagePath);
+		var content = await this.createFrontMatterLines(tags, imagePath);
 
 		// Use a proper Obsidian wikilink
 		content += `![[${imagePath}]]`;
@@ -617,7 +616,7 @@ export class FileImportModal extends Modal {
 		// --------------------------------------------------------
 		// FRONTMATTER
 		// --------------------------------------------------------
-
+		console.log("to print to frontline:", this.exifData)
         Object.entries(this.exifData).forEach(([key, value]) => {
   			frontmatterLines.push(`${key}: ${value}`);
 		});
