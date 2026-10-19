@@ -310,7 +310,6 @@ export class FileImportModal extends Modal {
 			new Notice("Please select a file first.");
 			return;
 		}
-		console.log(this.extractExifData)
 		try {
 			new Notice("Importing file...");
 

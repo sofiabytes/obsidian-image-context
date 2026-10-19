@@ -167,12 +167,28 @@ export class CaptionExifManager extends ExifManager {
       
     };
     console.log("this.exifdata: ", this.exifData)
-    const imageTitle = this.get('ImageTitle') as string[];
-    frontmatter['title'] = imageTitle[0]
-    const imageDescription = this.get('ImageDescription') as string[];
-    frontmatter['description'] = imageDescription[0]
-    const tagsList = this.get('TagsList') as string[];
-    frontmatter['tag'] = '  - '+tagsList.join('\n  - ')
+    const imageTitle = this.get('title') as {
+        value: string;
+        description: string;
+      }[];
+
+    console.log(imageTitle)
+    frontmatter['title'] = imageTitle[0].value
+    const imageDescription = this.get('ImageDescription') as {
+      value: string;
+      description: string;
+    }[];
+    console.log(imageDescription)
+    frontmatter['description'] = imageDescription[0].value
+        const tagsList = this.get('TagsList') as {
+      value: string;
+      description: string;
+    }[];
+    console.log(tagsList)
+
+    frontmatter['tag'] = '\n  - ' + tagsList
+      .map(tag => tag.value)
+      .join('\n  - ');
 
     return frontmatter;
   }
