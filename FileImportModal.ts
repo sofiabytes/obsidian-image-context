@@ -617,7 +617,7 @@ export class FileImportModal extends Modal {
 		// FRONTMATTER
 		// --------------------------------------------------------
 		console.log("to print to frontline:", this.exifData)
-        Object.entries(this.exifData).forEach(([key, value]) => {
+        this.exifData.forEach((value, key) => {
   			frontmatterLines.push(`${key}: ${value}`);
 		});
 
