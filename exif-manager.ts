@@ -26,7 +26,7 @@ type Fraction = [number, number];
  */
 export class ExifManager {
   protected file: File;
-  protected exifData: Record<string, any>;
+  protected exifData: Record<string, string | null>;
   
 
   constructor(file: File) {
