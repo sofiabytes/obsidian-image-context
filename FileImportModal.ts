@@ -401,17 +401,18 @@ export class FileImportModal extends Modal {
 	/**
 	 * Get the human-readable EXIF description.
 	 */
-	private getExifDescription(tag: any): string | null {
+	private getExifDescription(tag: unknown): string | null {
 		if (!tag) {
 			return null;
 		}
 
-		if (typeof tag.description === "string") {
-			return tag.description;
+		const tagObj = tag as Record<string, unknown>;
+		if (typeof tagObj.description === "string") {
+			return tagObj.description;
 		}
 
-		if (typeof tag.value === "string") {
-			return tag.value;
+		if (typeof tagObj.value === "string") {
+			return tagObj.value;
 		}
 
 		return null;
