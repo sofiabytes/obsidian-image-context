@@ -1,6 +1,6 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { FileImportModal } from "./FileImportModal";
-import { EXIF_MANAGER_CONFIGS, getAllManagerIds } from './exif-config';
+import { EXIF_MANAGER_CONFIGS, getAllManagerIds, isManagerEnabled, getManagerStatuses } from './exif-config';
 
 interface PixNotePluginSettings {
 	imageFolder: string;
@@ -110,9 +110,10 @@ class PixNoteSettingTab extends PluginSettingTab {
 
 		// Render a toggle for each EXIF manager
 		const enabledManagers = this.plugin.settings.exifManagers || [];
+		const managerStatuses = getManagerStatuses(enabledManagers);
 
 		EXIF_MANAGER_CONFIGS.forEach(config => {
-			const isChecked = enabledManagers.includes(config.id);
+			const isChecked = isManagerEnabled(config.id, enabledManagers);
 
 			new Setting(containerEl)
 				.setName(config.name)
@@ -137,6 +138,12 @@ class PixNoteSettingTab extends PluginSettingTab {
 							this.plugin.saveSettings();
 						});
 				});
+			});
+
+		// Log EXIF manager statuses for debugging
+		console.log('EXIF Manager Statuses:', managerStatuses);
+		EXIF_MANAGER_CONFIGS.forEach(config => {
+			console.log(`${config.name} (${config.id}): ${managerStatuses[config.id]}`);
 		});
 	}
 }

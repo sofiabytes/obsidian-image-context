@@ -18,35 +18,40 @@ export const EXIF_MANAGER_CONFIGS: ExifManagerConfig[] = [
     name: 'Date & Time',
     description: 'Extract date and time metadata from images',
     frontendKey: 'date',
-    className: DateExifManager
+    className: DateExifManager,
+    enabled: true
   },
   {
     id: 'location',
     name: 'Location (GPS)',
     description: 'Extract GPS coordinates and location data',
     frontendKey: 'location',
-    className: LocationExifManager
+    className: LocationExifManager,
+    enabled: true
   },
   {
     id: 'captions',
     name: 'Captions & Tags',
     description: 'Extract image descriptions and tags',
     frontendKey: 'captions',
-    className: CaptionExifManager
+    className: CaptionExifManager,
+    enabled: true
   },
   {
     id: 'camera',
     name: 'Camera Details',
     description: 'Extract camera settings (ISO, aperture, shutter speed, etc.)',
     frontendKey: 'camera',
-    className: CameraExifManager
+    className: CameraExifManager,
+    enabled: true
   },
   {
     id: 'image-details',
     name: 'Image Details',
     description: 'Extract image technical details (resolution, color depth, etc.)',
     frontendKey: 'image-details',
-    className: ImageDetailsExifManager
+    className: ImageDetailsExifManager,
+    enabled: true
   }
 ];
 
@@ -66,8 +71,25 @@ export function getAllManagerIds(): string[] {
 }
 
 /**
+ * Check if an EXIF manager is enabled
+ */
+export function isManagerEnabled(managerId: string, enabledKeys: string[]): boolean {
+  return enabledKeys.includes(managerId);
+}
+
+/**
  * Get a specific EXIF manager config by ID
  */
 export function getManagerConfigById(id: string): ExifManagerConfig | undefined {
   return EXIF_MANAGER_CONFIGS.find(config => config.id === id);
+}
+
+/**
+ * Get the status (enabled/disabled) for each EXIF manager
+ */
+export function getManagerStatuses(enabledKeys: string[]): Record<string, boolean> {
+  return EXIF_MANAGER_CONFIGS.reduce((acc, config) => {
+    acc[config.id] = enabledKeys.includes(config.id);
+    return acc;
+  }, {} as Record<string, boolean>);
 }
