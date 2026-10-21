@@ -78,7 +78,7 @@ export class ExifManager {
     async toFrontmatter(): Promise<FrontmatterRecord> {
     await this.getAll();
     const frontmatter: FrontmatterRecord = {
-      source: this.file,
+      
     };
     return frontmatter;
   }
@@ -133,7 +133,7 @@ export class LocationExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
     await this.getAll();
     const frontmatter: FrontmatterRecord = {
-      source: this.file,
+      
     };
 
     const absLatitude=this.get('GPSLatitude') as Fraction[] | null;

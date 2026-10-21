@@ -583,25 +583,32 @@ export class FileImportModal extends Modal {
 		// Tags
 		// --------------------------------------------------------
 
-		if (tags.length > 0) {
-			const cleanedTags = tags
-				.map((tag) => tag.trim())
-				.filter(Boolean)
-				.map((tag) => {
-					// Quote tags containing characters that could
-					// interfere with YAML.
-					if (/[\s,:#[\]{}"'`]/.test(tag)) {
-						return `"${tag.replace(/"/g, '\\"')}"`;
-					}
+		// if (tags.length > 0) {
+		// 	const cleanedTags = tags
+		// 		.map((tag) => tag.trim())
+		// 		.filter(Boolean)
+		// 		.map((tag) => {
+		// 			// Quote tags containing characters that could
+		// 			// interfere with YAML.
+		// 			if (/[\s,:#[\]{}"'`]/.test(tag)) {
+		// 				return `"${tag.replace(/"/g, '\\"')}"`;
+		// 			}
 
-					return tag;
-				});
+		// 			return tag;
+		// 		});
 
-			frontmatterLines.push(
-				`tags: [${cleanedTags.join(", ")}]`
-			);
+		// 	frontmatterLines.push(
+		// 		`tags: [${cleanedTags.join(", ")}]`
+		// 	);
+		// }
+
+		const string_tags = '\n  - '+tags.join('\n  - ')
+		if (this.exifData.get('tag') != undefined){
+			this.exifData.set('tag',this.exifData.get('tag')+string_tags)
+		} else {
+			this.exifData.set('tag',string_tags)
 		}
-
+		
 		// --------------------------------------------------------
 		// Source
 		// --------------------------------------------------------
