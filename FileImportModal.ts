@@ -1,6 +1,5 @@
 import {
 	App,
-	Modal,
 	ButtonComponent,
 	TFolder,
 	TextComponent,
@@ -8,9 +7,10 @@ import {
 	Notice,
 	normalizePath,
 	TFile,
+	Modal
 } from "obsidian";
 import type PixNotePlugin from "./main";
-import { load } from "exifreader";
+import { EXIF_MANAGER_CONFIGS } from './exif-config';
 
 export class FileImportModal extends Modal {
 	plugin: PixNotePlugin;
@@ -24,29 +24,24 @@ export class FileImportModal extends Modal {
 	imageDestFolder: string;
 	noteDestFolder: string;
 
-	extractExif: boolean;
-
 	// EXIF data
-	exifData: Record<string, any> | null = null;
-	latitude: number | null = null;
-	longitude: number | null = null;
-	exifDate: string | null = null;
+	exifData: Map<string, unknown> = new Map<string, unknown>();
+	extractExif: boolean;
 
 	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
 
 		this.plugin = plugin;
-
+        this.extractExif = true;
 		this.imageDestFolder = this.plugin.settings.imageFolder || "";
 		this.noteDestFolder = this.plugin.settings.noteFolder || "";
-		this.extractExif = this.plugin.settings.extractExif || false;
 	}
 
 	// ------------------------------------------------------------
 	// Modal lifecycle
 	// ------------------------------------------------------------
 
-	async onOpen() {
+	onOpen() {
 		this.createDialogue();
 	}
 
@@ -313,7 +308,6 @@ export class FileImportModal extends Modal {
 			new Notice("Please select a file first.");
 			return;
 		}
-
 		try {
 			new Notice("Importing file...");
 
@@ -370,10 +364,7 @@ export class FileImportModal extends Modal {
 	// ------------------------------------------------------------
 
 	resetExifData() {
-		this.exifData = null;
-		this.latitude = null;
-		this.longitude = null;
-		this.exifDate = null;
+		this.exifData = new Map<string, unknown>();
 	}
 
 	async extractExifData(file: File): Promise<void> {
@@ -382,115 +373,42 @@ export class FileImportModal extends Modal {
 			return;
 		}
 
-		try {
-			const arrayBuffer = await file.arrayBuffer();
+		const frontmatter_dict: Map<string, string> = new Map()
 
-			const tags = load(arrayBuffer);
-
-			this.exifData = tags;
-
-			// --------------------------------------------------------
-			// GPS
-			// --------------------------------------------------------
-
-			const gpsLatitude = tags["GPSLatitude"];
-			const gpsLongitude = tags["GPSLongitude"];
-
-			if (gpsLatitude && gpsLongitude) {
-				this.latitude = this.getExifNumber(gpsLatitude);
-				this.longitude = this.getExifNumber(gpsLongitude);
-			}
-
-			// --------------------------------------------------------
-			// Date
-			// --------------------------------------------------------
-
-			const dateTag =
-				tags["DateTimeOriginal"] ||
-				tags["DateTimeDigitized"] ||
-				tags["DateTime"];
-
-			if (dateTag) {
-				this.exifDate = this.getExifDescription(dateTag);
-			}
-		} catch (error) {
-			console.error("Error extracting EXIF data:", error);
-
-			// Don't abort the entire import because EXIF failed.
-			new Notice("Could not read EXIF metadata.");
-		}
-	}
-
-	/**
-	 * Extract a numeric value from an ExifReader tag.
-	 */
-	private getExifNumber(tag: any): number | null {
-		if (!tag) {
-			return null;
-		}
-
-		if (typeof tag.value === "number") {
-			return tag.value;
-		}
-
-		if (typeof tag.description === "number") {
-			return tag.description;
-		}
-
-		// Some EXIF values may be arrays.
-		if (Array.isArray(tag.value)) {
-			const values = tag.value
-				.map((value: any) => {
-					if (typeof value === "number") {
-						return value;
+		for (const extractor of EXIF_MANAGER_CONFIGS) {
+			if (this.plugin.settings.exifManagers[extractor.id])
+			{
+				try {
+					const extract = new extractor.className(file)
+					const frontmatter = await extract.toFrontmatter()
+					
+					for (const [key, value] of Object.entries(frontmatter)) {
+						frontmatter_dict.set(key as string, value as string);
 					}
-
-					if (
-						value &&
-						typeof value === "object" &&
-						"numerator" in value &&
-						"denominator" in value
-					) {
-						return value.numerator / value.denominator;
-					}
-
-					return Number(value);
-				})
-				.filter((value: number) => !Number.isNaN(value));
-
-			if (values.length === 1) {
-				return values[0];
+				} catch (error) {
+					new Notice("Problem extracting EXIF data");
+				}
 			}
 
-			// GPS coordinates can be represented as degrees/minutes/seconds.
-			if (values.length >= 3) {
-				return (
-					values[0] +
-					values[1] / 60 +
-					values[2] / 3600
-				);
-			}
 		}
-
-		const numericValue = Number(tag.description);
-
-		return Number.isNaN(numericValue) ? null : numericValue;
+		this.exifData = frontmatter_dict
 	}
 
 	/**
 	 * Get the human-readable EXIF description.
 	 */
-	private getExifDescription(tag: any): string | null {
+	private getExifDescription(tag: unknown): string | null {
 		if (!tag) {
 			return null;
 		}
 
-		if (typeof tag.description === "string") {
-			return tag.description;
+		const tagObj = tag as Record<string, unknown>;
+		if (typeof tagObj.description === "string") {
+			return tagObj.description;
 		}
 
-		if (typeof tag.value === "string") {
-			return tag.value;
+		if (typeof tagObj.value === "string") {
+			return tagObj.value;
 		}
 
 		return null;
@@ -625,7 +543,7 @@ export class FileImportModal extends Modal {
 		// Frontmatter
 		// --------------------------------------------------------
 
-		let content = this.createFrontMatterLines(tags, imagePath);
+		let content = await this.createFrontMatterLines(tags, imagePath);
 
 		// Use a proper Obsidian wikilink
 		content += `![[${imagePath}]]`;
@@ -647,7 +565,7 @@ export class FileImportModal extends Modal {
 	// Frontmatter
 	// ------------------------------------------------------------
 
-	createFrontMatterLines(tags: string[], imagePath: string): string {
+	async createFrontMatterLines(tags: string[], imagePath: string): Promise<string> {
 		const frontmatterLines: string[] = [
 			"---",
 		];
@@ -662,25 +580,32 @@ export class FileImportModal extends Modal {
 		// Tags
 		// --------------------------------------------------------
 
-		if (tags.length > 0) {
-			const cleanedTags = tags
-				.map((tag) => tag.trim())
-				.filter(Boolean)
-				.map((tag) => {
-					// Quote tags containing characters that could
-					// interfere with YAML.
-					if (/[\s,:#[\]{}"'`]/.test(tag)) {
-						return `"${tag.replace(/"/g, '\\"')}"`;
-					}
+		// if (tags.length > 0) {
+		// 	const cleanedTags = tags
+		// 		.map((tag) => tag.trim())
+		// 		.filter(Boolean)
+		// 		.map((tag) => {
+		// 			// Quote tags containing characters that could
+		// 			// interfere with YAML.
+		// 			if (/[\s,:#[\]{}"'`]/.test(tag)) {
+		// 				return `"${tag.replace(/"/g, '\\"')}"`;
+		// 			}
 
-					return tag;
-				});
+		// 			return tag;
+		// 		});
 
-			frontmatterLines.push(
-				`tags: [${cleanedTags.join(", ")}]`
-			);
+		// 	frontmatterLines.push(
+		// 		`tags: [${cleanedTags.join(", ")}]`
+		// 	);
+		// }
+
+		const string_tags = '\n  - '+tags.join('\n  - ')
+		if (this.exifData.get('tag') != undefined){
+			this.exifData.set('tag',this.exifData.get('tag')+string_tags)
+		} else {
+			this.exifData.set('tag',string_tags)
 		}
-
+		
 		// --------------------------------------------------------
 		// Source
 		// --------------------------------------------------------
@@ -697,75 +622,20 @@ export class FileImportModal extends Modal {
 		}
 
 		// --------------------------------------------------------
-		// EXIF
+		// FRONTMATTER
 		// --------------------------------------------------------
+        this.exifData.forEach((value, key) => {
+  			frontmatterLines.push(`${key}: ${value}`);
+		});
 
-		if (this.extractExif) {
-			this.addLocationToFrontmatter(frontmatterLines);
-			this.addDateToFrontmatter(frontmatterLines);
-		}
-
+		// --------------------------------------------------------
+		// ENDLINES
+		// --------------------------------------------------------
 		frontmatterLines.push("---");
 
 		// IMPORTANT: newline, not "/n"
 		return frontmatterLines.join("\n") + "\n";
 	}
 
-	// ------------------------------------------------------------
-	// Location
-	// ------------------------------------------------------------
 
-	addLocationToFrontmatter(
-		frontmatterLines: string[]
-	): void {
-		if (
-			this.latitude !== null &&
-			this.longitude !== null
-		) {
-			frontmatterLines.push(
-				`latitude: ${this.latitude}`
-			);
-
-			frontmatterLines.push(
-				`longitude: ${this.longitude}`
-			);
-
-			frontmatterLines.push(
-				`location: "${this.latitude}, ${this.longitude}"`
-			);
-		}
-	}
-
-	// ------------------------------------------------------------
-	// Date
-	// ------------------------------------------------------------
-
-	addDateToFrontmatter(
-		frontmatterLines: string[]
-	): void {
-		if (!this.exifDate) {
-			return;
-		}
-
-		// EXIF dates are commonly:
-		// YYYY:MM:DD HH:mm:ss
-		const normalizedDate = this.exifDate.replace(
-			/^(\d{4}):(\d{2}):(\d{2})/,
-			"$1-$2-$3"
-		);
-
-		const dateObj = new Date(
-			normalizedDate.replace(" ", "T")
-		);
-
-		if (!Number.isNaN(dateObj.getTime())) {
-			frontmatterLines.push(
-				`created: ${dateObj.toISOString()}`
-			);
-		}
-
-		frontmatterLines.push(
-			`created-time: "${this.exifDate.replace(/"/g, '\\"')}"`
-		);
-	}
 }

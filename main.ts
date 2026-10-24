@@ -1,23 +1,31 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { FileImportModal } from "./FileImportModal"
+import { App, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { FileImportModal } from "./FileImportModal";
+import { EXIF_MANAGER_CONFIGS, getAllManagerIds, isManagerEnabled, getManagerStatuses } from './exif-config';
 
 interface PixNotePluginSettings {
 	imageFolder: string;
 	noteFolder: string;
-	extractExif: boolean;
+	// EXIF manager configurations with enabled state
+	exifManagers: Record<string, boolean>;
 }
 
 const DEFAULT_SETTINGS: PixNotePluginSettings = {
 	imageFolder: '',
 	noteFolder: '',
-	extractExif: true
+	// Enable all EXIF managers by default
+	exifManagers: Object.fromEntries(
+    	EXIF_MANAGER_CONFIGS.map(cfg => [cfg.id, true])
+	),
 }
 
 export default class PixNotePlugin extends Plugin {
-	settings: PixNotePluginSettings;
+	settings!: PixNotePluginSettings;
+
 
 	async onload() {
 		await this.loadSettings();
+
+		this.addSettingTab(new PixNoteSettingTab(this.app, this));
 
 		this.addCommand({
 			id: 'open-file-import-modal',
@@ -27,9 +35,6 @@ export default class PixNotePlugin extends Plugin {
 			}
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new PixNoteSettingTab(this.app, this));
-
 	}
 
 	onunload() {
@@ -38,7 +43,19 @@ export default class PixNotePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const data = await this.loadData();
+		let newExifManagers = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
+
+		// Migrate old array format to new object format
+		if (data && Array.isArray(data.exifManagers)) {
+			newExifManagers = Object.fromEntries(
+				data.exifManagers.map(id => [id, true])
+			);
+		}
+
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, { exifManagers: newExifManagers });
+		this.settings.imageFolder = data?.imageFolder || DEFAULT_SETTINGS.imageFolder;
+		this.settings.noteFolder = data?.noteFolder || DEFAULT_SETTINGS.noteFolder;
 	}
 
 	async saveSettings() {
@@ -96,18 +113,32 @@ class PixNoteSettingTab extends PluginSettingTab {
 			);
 
 		// ============================================================
-		// Extract EXIF Data
+		// EXIF Data Extraction
 		// ============================================================
 
 		new Setting(containerEl)
-			.setName('Extract EXIF Data')
-			.setDesc('Automatically extract date and location from image metadata')
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.extractExif)
-					.onChange((value) => {
-						this.plugin.settings.extractExif = value;
-						this.plugin.saveSettings();
-					})
-			})
+			.setName('EXIF Extraction')
+			.setDesc('Choose which types of metadata to extract from images')
+			.setHeading();
+
+		// Render a toggle for each EXIF manager
+		const exifManagers = this.plugin.settings.exifManagers || {};
+
+
+		EXIF_MANAGER_CONFIGS.forEach(config => {
+			new Setting(containerEl)
+				.setName(config.name)
+				.setDesc(config.description)
+				.addToggle((toggle) => {
+					toggle
+						.setValue(exifManagers[config.id])
+						.onChange((value) => {
+							this.plugin.settings.exifManagers[config.id] = value
+							this.plugin.saveSettings();
+						});
+				});
+			});
+
+
 	}
 }
