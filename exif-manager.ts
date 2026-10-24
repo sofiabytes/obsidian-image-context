@@ -2,7 +2,7 @@
  * EXIF Data Manager
  * Manages different types of EXIF metadata from images
  */
-import ExifReader from "exifreader";
+import { load } from "exifreader";
   export const FLASH_DESCRIPTIONS: Record<number, string> = {
   0: 'Flash did not fire',
   1: 'Flash fired',
@@ -50,7 +50,7 @@ export class ExifManager {
    */
   async getAll(): Promise<Tags> {
     const arrayBuffer = await this.file.arrayBuffer();
-    this.exifData = await ExifReader.load(arrayBuffer);
+    this.exifData = await load(arrayBuffer);
     return this.exifData;
   }
 

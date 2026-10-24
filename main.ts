@@ -54,8 +54,8 @@ export default class PixNotePlugin extends Plugin {
 		}
 
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, { exifManagers: newExifManagers });
-		this.settings.imageFolder = data.imageFolder || DEFAULT_SETTINGS.imageFolder;
-		this.settings.noteFolder = data.noteFolder || DEFAULT_SETTINGS.noteFolder;
+		this.settings.imageFolder = data?.imageFolder || DEFAULT_SETTINGS.imageFolder;
+		this.settings.noteFolder = data?.noteFolder || DEFAULT_SETTINGS.noteFolder;
 	}
 
 	async saveSettings() {
