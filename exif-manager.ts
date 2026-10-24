@@ -216,10 +216,30 @@ export class ImageDetailsExifManager extends ExifManager {
     const frontmatter: FrontmatterRecord = {
       
     };
-
-    // Map EXIF data to Obsidian frontmatter keys
-    frontmatter['artist'] = this.get('Artist') as string;
-    frontmatter['copyright'] = this.get('Copyright') as string;
+    const Artist = this.get('Artist')
+    if (Array.isArray(Artist)) {
+      frontmatter["artist"] = Artist
+        .map(item =>
+          typeof item === "object" && item !== null && "value" in item
+            ? item.value
+            : item
+        )
+        .join("");
+    } else {
+      frontmatter["artist"] = Artist;
+    }
+    const Copyright = this.get('Copyright')
+    if (Array.isArray(Copyright)) {
+      frontmatter["copyright"] = Copyright
+        .map(item =>
+          typeof item === "object" && item !== null && "value" in item
+            ? item.value
+            : item
+        )
+        .join("");
+    } else {
+      frontmatter["copyright"] = Copyright;
+    }
 
     return frontmatter;
   }

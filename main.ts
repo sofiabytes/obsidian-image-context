@@ -130,8 +130,6 @@ class PixNoteSettingTab extends PluginSettingTab {
 				.setName(config.name)
 				.setDesc(config.description)
 				.addToggle((toggle) => {
-					console.log(exifManagers)
-					console.log(exifManagers[config.id])
 					toggle
 						.setValue(exifManagers[config.id])
 						.onChange((value) => {
