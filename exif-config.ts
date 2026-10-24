@@ -18,40 +18,35 @@ export const EXIF_MANAGER_CONFIGS: ExifManagerConfig[] = [
     name: 'Date & Time',
     description: 'Extract date and time metadata from images',
     frontendKey: 'date',
-    className: DateExifManager,
-    enabled: true
+    className: DateExifManager
   },
   {
     id: 'location',
     name: 'Location (GPS)',
     description: 'Extract GPS coordinates and location data',
     frontendKey: 'location',
-    className: LocationExifManager,
-    enabled: true
+    className: LocationExifManager
   },
   {
     id: 'captions',
     name: 'Captions & Tags',
     description: 'Extract image descriptions and tags',
     frontendKey: 'captions',
-    className: CaptionExifManager,
-    enabled: true
+    className: CaptionExifManager
   },
   {
     id: 'camera',
     name: 'Camera Details',
     description: 'Extract camera settings (ISO, aperture, shutter speed, etc.)',
     frontendKey: 'camera',
-    className: CameraExifManager,
-    enabled: true
+    className: CameraExifManager
   },
   {
     id: 'image-details',
     name: 'Image Details',
     description: 'Extract image technical details (resolution, color depth, etc.)',
     frontendKey: 'image-details',
-    className: ImageDetailsExifManager,
-    enabled: true
+    className: ImageDetailsExifManager
   }
 ];
 

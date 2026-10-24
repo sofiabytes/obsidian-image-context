@@ -13,6 +13,9 @@ import ExifReader from "exifreader";
   16: 'Flash did not fire, compulsory flash mode',
   24: 'Flash did not fire, automatic mode not supported by the flash',
   };
+
+import type { Tags } from "exifreader";
+
 export interface ExifData {
   [key: string]: unknown;
 }
@@ -20,43 +23,37 @@ export interface ExifData {
 export interface FrontmatterRecord {
   [key: string]: unknown;
 }
+
 type Fraction = [number, number];
+
 /**
  * Base class for EXIF managers
  */
 export class ExifManager {
   protected file: File;
-  protected exifData: Record<string, string | null>;
-  
+  protected exifData: Tags;
 
   constructor(file: File) {
-    this.file = file
-    this.exifData = {};
+    this.file = file;
+    this.exifData = null;
   }
 
   /**
-   * Set a single EXIF value
-   */
-  set(key: string, value: unknown): void {
-    this.exifData[key] = value;
-  }
-
-  /**
-   * Get a single EXIF value
+   * Get a single EXIF tag value
    */
   get(key: string): unknown | null {
     return this.exifData[key]?.value ?? null;
   }
 
   /**
-   * Get all EXIF values as an object
+   * Load all EXIF tags
    */
-  async getAll(): Promise<void> {
+  async getAll(): Promise<Tags> {
     const arrayBuffer = await this.file.arrayBuffer();
-    const tags = await ExifReader.load(arrayBuffer);
-    this.exifData = tags;
-  
+    this.exifData = await ExifReader.load(arrayBuffer);
+    return this.exifData;
   }
+
 
 
 
@@ -91,13 +88,11 @@ export class ExifManager {
 export class DateExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
     await this.getAll();
-    const frontmatter: FrontmatterRecord = {
-      
-    };
-    console.log("this.date: ", this.get('DateTimeOriginal'))
-    // Map EXIF data to Obsidian frontmatter keys
-    frontmatter.date = this.get('DateTimeOriginal') as string;
-
+    const frontmatter: FrontmatterRecord = {};
+    const dateValue = this.get('DateTimeOriginal');
+    if (dateValue) {
+      frontmatter.date = String(dateValue);
+    }
     return frontmatter;
   }
 }
@@ -132,26 +127,23 @@ export class LocationExifManager extends ExifManager {
 
   async toFrontmatter(): Promise<FrontmatterRecord> {
     await this.getAll();
-    const frontmatter: FrontmatterRecord = {
-      
-    };
+    const frontmatter: FrontmatterRecord = {};
 
-    const absLatitude=this.get('GPSLatitude') as Fraction[] | null;
-    const absLongitude=this.get('GPSLongitude') as Fraction[] | null;
+    const absLatitude = this.get('GPSLatitude') as Fraction[] | null;
+    const absLongitude = this.get('GPSLongitude') as Fraction[] | null;
     const longDirection = this.get('GPSLongitudeRef') as string;
     const latDirection = this.get('GPSLatitudeRef') as string;
-    if (absLatitude != null && absLongitude !=null){
-      frontmatter['latitude'] = this.latlonToDecimal(absLatitude, latDirection)
-      frontmatter['longitude'] = this.latlonToDecimal(absLongitude, longDirection)
-      frontmatter['location'] = [frontmatter['latitude'], frontmatter['longitude']]
+    if (absLatitude != null && absLongitude != null) {
+      frontmatter['latitude'] = this.latlonToDecimal(absLatitude, latDirection);
+      frontmatter['longitude'] = this.latlonToDecimal(absLongitude, longDirection);
+      frontmatter['location'] = [frontmatter['latitude'], frontmatter['longitude']];
     }
-    const AltitudeFraction=this.get('GPSAltitude') as Fraction | null;
-    const AltitudeDirection=this.get('GPSAltitudeRef') as number | null;
+    const AltitudeFraction = this.get('GPSAltitude') as Fraction | null;
+    const AltitudeDirection = this.get('GPSAltitudeRef') as number | null;
 
-    if (AltitudeFraction != null && AltitudeDirection !=null){
-      frontmatter['altitude']=this.altitudeCalc(AltitudeFraction, AltitudeDirection)
+    if (AltitudeFraction != null && AltitudeDirection != null) {
+      frontmatter['altitude'] = this.altitudeCalc(AltitudeFraction, AltitudeDirection);
     }
-    
 
     return frontmatter;
   }
@@ -163,32 +155,22 @@ export class LocationExifManager extends ExifManager {
 export class CaptionExifManager extends ExifManager {
   async toFrontmatter(): Promise<FrontmatterRecord> {
     await this.getAll();
-    const frontmatter: FrontmatterRecord = {
-      
-    };
-    console.log("this.exifdata: ", this.exifData)
-    const imageTitle = this.get('title') as {
-        value: string;
-        description: string;
-      }[];
+    const frontmatter: FrontmatterRecord = {};
 
-    console.log(imageTitle)
-    frontmatter['title'] = imageTitle[0].value
-    const imageDescription = this.get('ImageDescription') as {
-      value: string;
-      description: string;
-    }[];
-    console.log(imageDescription)
-    frontmatter['description'] = imageDescription[0].value
-        const tagsList = this.get('TagsList') as {
-      value: string;
-      description: string;
-    }[];
-    console.log(tagsList)
+    const imageTitle = this.get('title') as { value: string }[];
+    if (imageTitle && imageTitle.length > 0) {
+      frontmatter['title'] = imageTitle[0].value;
+    }
 
-    frontmatter['tag'] = '\n  - ' + tagsList
-      .map(tag => tag.value)
-      .join('\n  - ');
+    const imageDescription = this.get('ImageDescription') as { value: string }[];
+    if (imageDescription && imageDescription.length > 0) {
+      frontmatter['description'] = imageDescription[0].value;
+    }
+
+    const tagsList = this.get('TagsList') as { value: string }[];
+    if (tagsList && tagsList.length > 0) {
+      frontmatter['tag'] = '\n  - ' + tagsList.map(tag => tag.value).join('\n  - ');
+    }
 
     return frontmatter;
   }

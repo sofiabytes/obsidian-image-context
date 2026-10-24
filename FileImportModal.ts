@@ -1,6 +1,5 @@
 import {
 	App,
-	Modal,
 	ButtonComponent,
 	TFolder,
 	TextComponent,
@@ -8,11 +7,10 @@ import {
 	Notice,
 	normalizePath,
 	TFile,
+	Modal
 } from "obsidian";
 import type PixNotePlugin from "./main";
-import {ImageDetailsExifManager, CameraExifManager, CaptionExifManager, LocationExifManager, DateExifManager} from "./exif-manager"
-import { load } from "exifreader";
-import { EXIF_MANAGER_CONFIGS, getAllManagerIds } from './exif-config';
+import { EXIF_MANAGER_CONFIGS } from './exif-config';
 
 export class FileImportModal extends Modal {
 	plugin: PixNotePlugin;
@@ -28,7 +26,7 @@ export class FileImportModal extends Modal {
 
 	// EXIF data
 	exifData: Map<string, unknown> = new Map<string, unknown>();
-	extractExif: Boolean;
+	extractExif: boolean;
 
 	constructor(app: App, plugin: PixNotePlugin) {
 		super(app);
@@ -43,7 +41,7 @@ export class FileImportModal extends Modal {
 	// Modal lifecycle
 	// ------------------------------------------------------------
 
-	async onOpen() {
+	onOpen() {
 		this.createDialogue();
 	}
 
@@ -274,7 +272,7 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		// exifCheckbox.checked = this.extractExif;
+		exifCheckbox.checked = this.extractExif;
 
 		const exifLabel = exifContainer.createEl("label", {
 			text: " Extract EXIF metadata",
@@ -378,24 +376,22 @@ export class FileImportModal extends Modal {
 		const frontmatter_dict: Map<string, string> = new Map()
 
 		for (const extractor of EXIF_MANAGER_CONFIGS) {
-			try {
-				const extract = await new extractor.className(file)
-				const frontmatter = await extract.toFrontmatter()
-				
-        		for (const [key, value] of Object.entries(frontmatter)) {
-            		frontmatter_dict.set(key as string, value as string);
-// const instances = exifManagers.map(config => {
-//   const ManagerClass = config.className;
-//   return new ManagerClass(file);
-// });
+			if (this.plugin.settings.exifManagers[extractor.id])
+			{
+				try {
+					const extract = new extractor.className(file)
+					const frontmatter = await extract.toFrontmatter()
+					
+					for (const [key, value] of Object.entries(frontmatter)) {
+						frontmatter_dict.set(key as string, value as string);
+					}
+				} catch (error) {
+					new Notice("Problem extracting EXIF data");
 				}
-			} catch (error) {
-				console.error("Error extracting EXIF data:", error);
-				new Notice("Problem extracting EXIF data: check the console for logs");
 			}
+
 		}
 		this.exifData = frontmatter_dict
-		console.log(this.exifData)
 	}
 
 	/**
@@ -547,7 +543,7 @@ export class FileImportModal extends Modal {
 		// Frontmatter
 		// --------------------------------------------------------
 
-		var content = await this.createFrontMatterLines(tags, imagePath);
+		let content = await this.createFrontMatterLines(tags, imagePath);
 
 		// Use a proper Obsidian wikilink
 		content += `![[${imagePath}]]`;
@@ -628,7 +624,6 @@ export class FileImportModal extends Modal {
 		// --------------------------------------------------------
 		// FRONTMATTER
 		// --------------------------------------------------------
-		console.log("to print to frontline:", this.exifData)
         this.exifData.forEach((value, key) => {
   			frontmatterLines.push(`${key}: ${value}`);
 		});

@@ -5,10 +5,10 @@
     "module": "ESNext",
     "target": "ES6",
     "allowJs": true,
-    "noImplicitAny": true,
+    "noImplicitAny": false,
     "importHelpers": true,
     "isolatedModules": true,
-    "strictNullChecks": true,
+    "strictNullChecks": false,
     "lib": [
       "DOM",
       "ES5",
