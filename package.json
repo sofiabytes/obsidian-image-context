@@ -12,7 +12,8 @@
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
-		"exifreader": "^4.43.0"
+		"exifreader": "^4.43.0",
+		"date-fns":"^4.4"
 	},
 	"devDependencies": {
 		"@types/node": "^16.11.6",

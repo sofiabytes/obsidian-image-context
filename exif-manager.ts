@@ -3,6 +3,7 @@
  * Manages different types of EXIF metadata from images
  */
 import { load } from "exifreader";
+import { format, isValid, parse } from 'date-fns';
   export const FLASH_DESCRIPTIONS: Record<number, string> = {
   0: 'Flash did not fire',
   1: 'Flash fired',
@@ -91,7 +92,16 @@ export class DateExifManager extends ExifManager {
     const frontmatter: FrontmatterRecord = {};
     const dateValue = this.get('DateTimeOriginal');
     if (dateValue) {
-      frontmatter.date = String(dateValue);
+          const parsedDate = parse(
+            String(dateValue),
+            'yyyy:MM:dd HH:mm:ss',
+            new Date(),
+          );
+
+          if (isValid(parsedDate)) {
+            frontmatter['date'] = format(parsedDate, 'yyyy-MM-dd');
+            frontmatter['datetime'] = format(parsedDate, "yyyy-MM-dd'T'HH:mm:ssXXX");
+          }
     }
     return frontmatter;
   }
