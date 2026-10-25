@@ -2,11 +2,11 @@
   "compilerOptions": {
     "inlineSourceMap": true,
     "inlineSources": true,
-    "module": "ESNext",
-    "target": "ES6",
     "allowJs": true,
     "noImplicitAny": false,
+    "module": "ESNext",
     "moduleResolution": "node",
+    "target": "ES6",
     "importHelpers": true,
     "isolatedModules": true,
     "strictNullChecks": false,
