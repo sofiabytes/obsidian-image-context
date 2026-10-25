@@ -169,7 +169,7 @@ export class CaptionExifManager extends ExifManager {
 
     const tagsList = this.get('TagsList') as { value: string }[];
     if (tagsList && tagsList.length > 0) {
-      frontmatter['tag'] = '\n  - ' + tagsList.map(tag => tag.value).join('\n  - ');
+      frontmatter['tags'] = '\n  - ' + tagsList.map(tag => tag.value).join('\n  - ');
     }
 
     return frontmatter;
