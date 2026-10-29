@@ -96,10 +96,10 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		const fileNameEl = contentEl.createEl("div", {
+		const fileNameEl = contentEl.appendChild(createEl("div", {
 			text: "No file selected",
 			cls: "selected-file-name",
-		});
+		}));
 
 		fileInput.onchange = () => {
 			if (fileInput.files && fileInput.files.length > 0) {
@@ -383,7 +383,7 @@ export class FileImportModal extends Modal {
 					const frontmatter = await extract.toFrontmatter()
 					
 					for (const [key, value] of Object.entries(frontmatter)) {
-						frontmatter_dict.set(key as string, value as string);
+						frontmatter_dict.set(key, value as string);
 					}
 				} catch (error) {
 					new Notice("Problem extracting EXIF data");
@@ -580,30 +580,14 @@ export class FileImportModal extends Modal {
 		// Tags
 		// --------------------------------------------------------
 
-		// if (tags.length > 0) {
-		// 	const cleanedTags = tags
-		// 		.map((tag) => tag.trim())
-		// 		.filter(Boolean)
-		// 		.map((tag) => {
-		// 			// Quote tags containing characters that could
-		// 			// interfere with YAML.
-		// 			if (/[\s,:#[\]{}"'`]/.test(tag)) {
-		// 				return `"${tag.replace(/"/g, '\\"')}"`;
-		// 			}
-
-		// 			return tag;
-		// 		});
-
-		// 	frontmatterLines.push(
-		// 		`tags: [${cleanedTags.join(", ")}]`
-		// 	);
-		// }
-
 		const string_tags = '\n  - '+tags.join('\n  - ')
-		if (this.exifData.get('tag') != undefined){
-			this.exifData.set('tag',this.exifData.get('tag')+string_tags)
+
+		const existingTag = this.exifData.get('tag');
+
+		if (existingTag !== undefined) {
+   			this.exifData.set('tag', String(existingTag) + string_tags);
 		} else {
-			this.exifData.set('tag',string_tags)
+			this.exifData.set('tag', string_tags);
 		}
 		
 		// --------------------------------------------------------

@@ -46,10 +46,13 @@ export default class PixNotePlugin extends Plugin {
 		const data = await this.loadData();
 		let newExifManagers = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
 
-		// Migrate old array format to new object format
-		if (data && Array.isArray(data.exifManagers)) {
+		if (
+			data &&
+			Array.isArray(data.exifManagers) &&
+			data.exifManagers.every((id: unknown): id is string => typeof id === 'string')
+		) {
 			newExifManagers = Object.fromEntries(
-				data.exifManagers.map(id => [id, true])
+				data.exifManagers.map((id: string) => [id, true] as const)
 			);
 		}
 

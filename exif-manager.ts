@@ -42,7 +42,7 @@ export class ExifManager {
   /**
    * Get a single EXIF tag value
    */
-  get(key: string): unknown | null {
+  get(key: string): unknown {
     return this.exifData[key]?.value ?? null;
   }
 
@@ -51,12 +51,9 @@ export class ExifManager {
    */
   async getAll(): Promise<Tags> {
     const arrayBuffer = await this.file.arrayBuffer();
-    this.exifData = await load(arrayBuffer);
+    this.exifData = load(arrayBuffer);
     return this.exifData;
   }
-
-
-
 
   /**
    * Clear all EXIF data
@@ -203,14 +200,14 @@ export class CameraExifManager extends ExifManager {
     };
 
     // Map EXIF data to Obsidian frontmatter keys
-    frontmatter['focal length'] = this.get('FocalLength') as string | number;
-    frontmatter['iso'] = this.get('ISOSpeedRatings') as string | number;
-    frontmatter['aperture'] = this.get('FNumber') as string | number;
-    frontmatter['shutter speed'] = this.get('ExposureTime') as string | number;
-    frontmatter['camera make'] = this.get('Make') as string;
-    frontmatter['camera model'] = this.get('Model') as string;
-    frontmatter['exposure program'] = this.get('ExposureProgram') as string;
-    frontmatter['white balance'] = this.get('WhiteBalance') as string;
+    frontmatter['focal length'] = this.get('FocalLength');
+    frontmatter['iso'] = this.get('ISOSpeedRatings');
+    frontmatter['aperture'] = this.get('FNumber');
+    frontmatter['shutter speed'] = this.get('ExposureTime');
+    frontmatter['camera make'] = this.get('Make');
+    frontmatter['camera model'] = this.get('Model');
+    frontmatter['exposure program'] = this.get('ExposureProgram');
+    frontmatter['white balance'] = this.get('WhiteBalance');
     frontmatter['flash'] = this.flashTranlator(this.get('Flash') as number);
 
     return frontmatter;
