@@ -44,7 +44,7 @@ export default class PixNotePlugin extends Plugin {
 
 	async loadSettings() {
 		const data = await this.loadData();
-		let newExifManagers = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
+		let newExifManagers : Record<string, boolean> = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
 
 		if (
 			data &&
@@ -94,7 +94,7 @@ class PixNoteSettingTab extends PluginSettingTab {
 					.setPlaceholder('e.g. /images')
 					.onChange((newValue) => {
 						this.plugin.settings.imageFolder = newValue.trim().replace(/\/+$/, "").replace(/^\/+/, "");
-						this.plugin.saveSettings();
+						this.plugin.saveSettings().catch(console.error);
 					})
 			);
 
@@ -111,7 +111,7 @@ class PixNoteSettingTab extends PluginSettingTab {
 					.setPlaceholder('e.g. /notes')
 					.onChange((newValue) => {
 						this.plugin.settings.noteFolder = newValue.trim().replace(/\/+$/, "").replace(/^\/+/, "");
-						this.plugin.saveSettings();
+						this.plugin.saveSettings().catch(console.error);
 					})
 			);
 
@@ -137,7 +137,7 @@ class PixNoteSettingTab extends PluginSettingTab {
 						.setValue(exifManagers[config.id])
 						.onChange((value) => {
 							this.plugin.settings.exifManagers[config.id] = value
-							this.plugin.saveSettings();
+							this.plugin.saveSettings().catch(console.error);
 						});
 				});
 			});
