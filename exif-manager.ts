@@ -223,29 +223,29 @@ export class ImageDetailsExifManager extends ExifManager {
     const frontmatter: FrontmatterRecord = {
       
     };
-    const Artist = this.get('Artist')
+    const Artist = this.get('Artist') as unknown[] | string | null
     if (Array.isArray(Artist)) {
       frontmatter["artist"] = Artist
         .map(item =>
           typeof item === "object" && item !== null && "value" in item
             ? item.value
-            : item
+            : typeof item === "string" ? item : ""
         )
         .join("");
     } else {
-      frontmatter["artist"] = Artist;
+      frontmatter["artist"] = Artist || "";
     }
-    const Copyright = this.get('Copyright')
+    const Copyright = this.get('Copyright') as unknown[] | string | null
     if (Array.isArray(Copyright)) {
       frontmatter["copyright"] = Copyright
         .map(item =>
           typeof item === "object" && item !== null && "value" in item
             ? item.value
-            : item
+            : typeof item === "string" ? item : ""
         )
         .join("");
     } else {
-      frontmatter["copyright"] = Copyright;
+      frontmatter["copyright"] = Copyright || "";
     }
 
     return frontmatter;
