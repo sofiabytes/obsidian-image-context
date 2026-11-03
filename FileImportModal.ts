@@ -96,7 +96,7 @@ export class FileImportModal extends Modal {
 			},
 		});
 
-		const fileNameEl = contentEl.appendChild(createEl("div", {
+		const fileNameEl = contentEl.appendChild(createDiv({
 			text: "No file selected",
 			cls: "selected-file-name",
 		}));

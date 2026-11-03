@@ -6,20 +6,24 @@
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-		"version": "node version-bump.mjs && git add manifest.json versions.json"
+		"version": "node version-bump.mjs && git add manifest.json versions.json",
+		"review": "eslint .",
+		"review:fix": "eslint . --fix"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
-		"exifreader": "^4.43.0",
-		"date-fns":"^3.0.4"
+		"date-fns": "^3.0.4",
+		"exifreader": "^4.43.0"
 	},
 	"devDependencies": {
 		"@types/node": "^16.11.6",
 		"@typescript-eslint/eslint-plugin": "5.29.0",
 		"@typescript-eslint/parser": "5.29.0",
 		"esbuild": "^0.27.2",
+		"eslint": "^9.39.5",
+		"eslint-plugin-obsidianmd": "^0.4.2",
 		"obsidian": "latest",
 		"tslib": "2.4.0",
 		"typescript": "4.7.4"
