@@ -43,22 +43,24 @@ export default class PixNotePlugin extends Plugin {
 	}
 
 	async loadSettings() {
-		const data = await this.loadData();
-		let newExifManagers : Record<string, boolean> = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
+		const rawData = await this.loadData();
+		let newExifManagers: Record<string, boolean> = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
 
 		if (
-			data &&
-			Array.isArray(data.exifManagers) &&
-			data.exifManagers.every((id: unknown): id is string => typeof id === 'string')
+			typeof rawData === 'object' &&
+			typeof rawData.exifManagers === 'object' &&
+			Array.isArray(rawData.exifManagers) &&
+			rawData.exifManagers.every((id: unknown): id is string => typeof id === 'string')
 		) {
 			newExifManagers = Object.fromEntries(
-				data.exifManagers.map((id: string) => [id, true] as const)
+				rawData.exifManagers.map((id: string) => [id, true] as const)
 			);
 		}
 
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, { exifManagers: newExifManagers });
-		this.settings.imageFolder = data?.imageFolder || DEFAULT_SETTINGS.imageFolder;
-		this.settings.noteFolder = data?.noteFolder || DEFAULT_SETTINGS.noteFolder;
+		const settings: PixNotePluginSettings = Object.assign({}, DEFAULT_SETTINGS, { exifManagers: newExifManagers });
+		settings.imageFolder = rawData?.imageFolder || DEFAULT_SETTINGS.imageFolder;
+		settings.noteFolder = rawData?.noteFolder || DEFAULT_SETTINGS.noteFolder;
+		this.settings = settings;
 	}
 
 	async saveSettings() {
