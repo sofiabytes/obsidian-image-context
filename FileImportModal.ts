@@ -585,7 +585,7 @@ export class FileImportModal extends Modal {
 		const existingTag = this.exifData.get('tag');
 
 		if (existingTag !== undefined) {
-   			this.exifData.set('tag', String(existingTag) + string_tags);
+   			this.exifData.set('tag', (existingTag as string) + string_tags);
 		} else {
 			this.exifData.set('tag', string_tags);
 		}
