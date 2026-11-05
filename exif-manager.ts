@@ -90,7 +90,7 @@ export class DateExifManager extends ExifManager {
     const dateValue = this.get('DateTimeOriginal');
     if (dateValue) {
           const parsedDate = parse(
-            String(dateValue),
+            dateValue as string,
             'yyyy:MM:dd HH:mm:ss',
             new Date(),
           );
