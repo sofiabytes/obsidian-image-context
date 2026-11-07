@@ -228,7 +228,7 @@ export class ImageDetailsExifManager extends ExifManager {
       frontmatter["artist"] = Artist
         .map(item =>
           typeof item === "object" && item !== null && "value" in item
-            ? item.value
+            ? typeof item.value === "string" ? item.value : ""
             : typeof item === "string" ? item : ""
         )
         .join("");
@@ -240,7 +240,7 @@ export class ImageDetailsExifManager extends ExifManager {
       frontmatter["copyright"] = Copyright
         .map(item =>
           typeof item === "object" && item !== null && "value" in item
-            ? item.value
+            ? typeof item.value === "string" ? item.value : ""
             : typeof item === "string" ? item : ""
         )
         .join("");

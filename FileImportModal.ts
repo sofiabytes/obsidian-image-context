@@ -609,7 +609,12 @@ export class FileImportModal extends Modal {
 		// FRONTMATTER
 		// --------------------------------------------------------
         this.exifData.forEach((value, key) => {
-  			frontmatterLines.push(`${key}: ${value}`);
+			    const stringValue =
+				typeof value === "string"
+					? value
+					: JSON.stringify(value);
+
+				frontmatterLines.push(`${key}: ${stringValue}`);
 		});
 
 		// --------------------------------------------------------
