@@ -45,9 +45,9 @@ export default class PixNotePlugin extends Plugin {
 	async loadSettings() {
 		const rawData: object = await this.loadData() as object;
 		let newExifManagers: Record<string, boolean> = Object.assign({}, DEFAULT_SETTINGS.exifManagers);
-
 		if (
 			typeof rawData === 'object' &&
+			rawData != null &&
 			typeof rawData['exifManagers'] === 'object' &&
 			Array.isArray(rawData['exifManagers']) &&
 			rawData['exifManagers'].every((id: unknown): id is string => typeof id === 'string')
@@ -55,6 +55,7 @@ export default class PixNotePlugin extends Plugin {
 			newExifManagers = Object.fromEntries(
 				rawData['exifManagers'].map((id: string) => [id, true] as const)
 			);
+
 		}
 
 		const settings: PixNotePluginSettings = Object.assign({}, DEFAULT_SETTINGS, { exifManagers: newExifManagers });

@@ -90,7 +90,7 @@ export class DateExifManager extends ExifManager {
     const dateValue = this.get('DateTimeOriginal');
     if (dateValue) {
           const parsedDate = parse(
-            dateValue as string,
+            dateValue[0] as string,
             'yyyy:MM:dd HH:mm:ss',
             new Date(),
           );
@@ -143,7 +143,7 @@ export class LocationExifManager extends ExifManager {
     if (absLatitude != null && absLongitude != null) {
       frontmatter['latitude'] = this.latlonToDecimal(absLatitude, latDirection);
       frontmatter['longitude'] = this.latlonToDecimal(absLongitude, longDirection);
-      frontmatter['location'] = [frontmatter['latitude'], frontmatter['longitude']];
+      frontmatter['location'] = [this.latlonToDecimal(absLatitude, latDirection), this.latlonToDecimal(absLongitude, longDirection)].join(', ');
     }
     const AltitudeFraction = this.get('GPSAltitude') as Fraction | null;
     const AltitudeDirection = this.get('GPSAltitudeRef') as number | null;
@@ -192,21 +192,27 @@ export class CameraExifManager extends ExifManager {
     return ''
   }
 
+  fractionConverter(fractionList: number[]):string{
+    return String(fractionList[0]/fractionList[1])
+  }
+
   async toFrontmatter(): Promise<FrontmatterRecord> {
 
     await this.getAll();
     const frontmatter: FrontmatterRecord = {
       
     };
-
+    const shutterSpeed = this.fractionConverter(this.get('ExposureTime') as number[])
+    const aperture = this.fractionConverter(this.get('FNumber') as number[])
+    const FocalLength = this.fractionConverter(this.get('FocalLength') as number[])
     // Map EXIF data to Obsidian frontmatter keys
-    frontmatter['focal length'] = this.get('FocalLength');
+    frontmatter['focal length'] = FocalLength
     frontmatter['iso'] = this.get('ISOSpeedRatings');
-    frontmatter['aperture'] = this.get('FNumber');
-    frontmatter['shutter speed'] = this.get('ExposureTime');
+    frontmatter['aperture'] = aperture
+    frontmatter['shutter speed'] = shutterSpeed
     frontmatter['camera make'] = this.get('Make');
     frontmatter['camera model'] = this.get('Model');
-    frontmatter['exposure program'] = this.get('ExposureProgram');
+    frontmatter['exposure program'] = shutterSpeed;
     frontmatter['white balance'] = this.get('WhiteBalance');
     frontmatter['flash'] = this.flashTranlator(this.get('Flash') as number);
 
